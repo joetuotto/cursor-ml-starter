@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          . .venv/bin/activate
+          ruff check .
+      - name: Tests
+        run: |
+          . .venv/bin/activate
+          pytest -q
+      - name: Train (linear cv=4)
+        run: |
+          . .venv/bin/activate
+          python -m src.cli train --csv ./data/data.csv --model linear --cv 4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-artifacts
+          path: artifacts/*
+

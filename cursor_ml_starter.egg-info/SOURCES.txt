@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+cursor_ml_starter.egg-info/PKG-INFO
+cursor_ml_starter.egg-info/SOURCES.txt
+cursor_ml_starter.egg-info/dependency_links.txt
+cursor_ml_starter.egg-info/entry_points.txt
+cursor_ml_starter.egg-info/top_level.txt
+src/__init__.py
+src/cli.py
+src/data.py
+src/model.py
+tests/test_basic.py
+tests/test_cli_predict.py
