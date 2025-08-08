@@ -5,7 +5,6 @@ from typing import List
 
 import pandas as pd
 
-
 REQUIRED_COLUMNS: List[str] = ["EMF", "Income", "Urbanization", "TFR"]
 
 
@@ -32,6 +31,6 @@ def load_data(csv_path: str) -> pd.DataFrame:
         raise ValueError(f"Missing required columns: {missing}")
 
     if data["TFR"].isna().any():
-        raise ValueError("Target column \"TFR\" contains NaN values")
+        raise ValueError('Target column "TFR" contains NaN values')
 
     return data

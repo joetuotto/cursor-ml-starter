@@ -37,4 +37,3 @@ jobs:
         with:
           name: model-artifacts
           path: artifacts/*
-

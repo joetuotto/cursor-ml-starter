@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 
 import joblib
 import numpy as np
@@ -13,7 +13,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -65,9 +65,7 @@ def _cv_metrics(pipeline: Pipeline, X: pd.DataFrame, y: pd.Series, cv: int) -> D
     neg_rmse = cross_val_score(
         pipeline, X, y, scoring="neg_root_mean_squared_error", cv=kf, n_jobs=-1
     )
-    r2_scores = cross_val_score(
-        pipeline, X, y, scoring="r2", cv=kf, n_jobs=-1
-    )
+    r2_scores = cross_val_score(pipeline, X, y, scoring="r2", cv=kf, n_jobs=-1)
     return {
         "rmse": float(-neg_rmse.mean()),
         "r2": float(r2_scores.mean()),

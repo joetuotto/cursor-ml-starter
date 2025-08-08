@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
@@ -58,5 +57,3 @@ def test_cli_train_and_predict(tmp_path: Path) -> None:
     assert proc_pred.returncode == 0, proc_pred.stderr
     out = json.loads(proc_pred.stdout)
     assert "predictions" in out and len(out["predictions"]) == 8
-
-

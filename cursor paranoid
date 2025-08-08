@@ -337,7 +337,7 @@ Hyvä kysymys. Kun haluat, että **GPT koodaa mallin Cursorissa** pelkällä tek
 Laita tämä Cursor-chatin alkuun. Se ohjaa mallia koodaamaan täsmällisesti.
 
 ```
-Toimi pääohjelmoijana Cursor-projektissani. Tuota vain ajettavaa, minimaalista koodia ja tarvittavat tiedostot. 
+Toimi pääohjelmoijana Cursor-projektissani. Tuota vain ajettavaa, minimaalista koodia ja tarvittavat tiedostot.
 Sääntösi:
 - Luo pyydetyt tiedostot täsmälleen nimillä ja poluilla, älä lisää ylimääräisiä.
 - Lisää requirements.txt vain välttämättömillä riippuvuuksilla.
@@ -370,7 +370,7 @@ KRITEERIT:
 RAJOITUKSET:
 - Ei deep learning -kirjastoja. Ei seabornia. Pidä koodi lyhyenä ja selkeänä.
 AJO:
-- Yksi komento, joka asentaa riippuvuudet ja kouluttaa mallin datalla: 
+- Yksi komento, joka asentaa riippuvuudet ja kouluttaa mallin datalla:
   `pip install -r requirements.txt && python -m src.cli train --csv ./data/data.csv`
 ```
 
@@ -382,7 +382,7 @@ AJO:
 
 ```
 Rakenna regressiopipeline TFR:n ennustamiseen seuraavista piirteistä: EMF, Income, Urbanization.
-Käytä RandomForestRegressoria ja StandardScaleria (tarvittaessa). 
+Käytä RandomForestRegressoria ja StandardScaleria (tarvittaessa).
 Tiedostot ja säännöt kuten “Uusi malli – yleispohja” -kohdassa, mutta metriikat: RMSE ja R².
 Lisää feature_importances_-visualisointi matplotlibilla → tallenna ./artifacts/feature_importance.png.
 ```
@@ -414,7 +414,7 @@ Tiedostot ja malli kuten yleispohjassa. Lisää tests/test_cv.py, jossa tarkiste
 ```
 Luo yksinkertainen kausaalianalyysi: DAG-kuvaus kommenteissa (X→Y, Z confounder).
 Mittaa treatment X vaikutus Y:hen perusmenetelmillä (matching tai stratified regression).
-Ei raskaita kirjastoja (ei DoWhy/EconML), tee kevyt toteutus: 
+Ei raskaita kirjastoja (ei DoWhy/EconML), tee kevyt toteutus:
 - Propensity score logistisella regressiolla
 - IPTW-arvio ja yksinkertainen standard error
 Raportoi keskeiset luvut ./artifacts/causal.json.
@@ -437,7 +437,7 @@ Raportoi keskeiset luvut ./artifacts/causal.json.
 * **“Refaktoroi modulaariseksi”**
 
   ```
-  Pilko src/model.py kolmeen osaan: model_def.py (rakennus), train.py, eval.py. 
+  Pilko src/model.py kolmeen osaan: model_def.py (rakennus), train.py, eval.py.
   Pidä julkiset funktiot: build_model, train, evaluate. Päivitä cli vastaavasti.
   ```
 
@@ -457,7 +457,7 @@ Raportoi keskeiset luvut ./artifacts/causal.json.
 * **“Lisää testit”**
 
   ```
-  Laajenna tests/: 
+  Laajenna tests/:
   - test_data_load (puuttuva sarake nostaa virheen)
   - test_train_predict (fit toimii ja predict palauttaa muodon (n,))
   - test_cli_train (subprocess: komento ajaa ja luo artifacts)
@@ -486,5 +486,3 @@ Voin tehdä Cursor-kansioon:
 * Valmiin “regressiopohjan” joka rakentuu yhdellä komennolla
 
 Sano vain mille mallityypille aloitetaan (regressio / aikasarja / luokittelu / kevyt kausalimalli), niin teen sinulle heti ”avaa ja aja” -paketin.
-
-

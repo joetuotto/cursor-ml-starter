@@ -45,15 +45,20 @@ def main(argv: Optional[list[str]] = None) -> None:
             cv=args.cv,
         )
         result = evaluate_and_save(pipeline, data, metrics)
-        print(json.dumps({
-            "rmse": result.rmse,
-            "r2": result.r2,
-            "model_path": result.model_path,
-            "metrics_path": result.metrics_path,
-            "feature_plot_path": result.feature_plot_path,
-            "mode": metrics.get("mode"),
-            "model_type": metrics.get("model_type")
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "rmse": result.rmse,
+                    "r2": result.r2,
+                    "model_path": result.model_path,
+                    "metrics_path": result.metrics_path,
+                    "feature_plot_path": result.feature_plot_path,
+                    "mode": metrics.get("mode"),
+                    "model_type": metrics.get("model_type"),
+                },
+                indent=2,
+            )
+        )
 
     elif args.command == "predict":
         model = joblib.load(args.model_path)
