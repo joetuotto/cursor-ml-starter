@@ -259,7 +259,7 @@ PY
           }
           S="$(esc "${SUMMARY:-Newswire}")"
           L="$(esc "${LEDE:-—}")"
-          TEXT=$(printf '✅ Post-deploy enrich OK (%s)\n*%s* — %s\nArtifact: post-deploy-enriched-report' "$sha" "$S" "$L")
+          TEXT=$(printf '✅ Post-deploy enrich OK (%s)\n*%s* — %s\nRun: https://github.com/%s/actions/runs/%s\nArtifact: post-deploy-enriched-report' "$sha" "$S" "$L" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
           curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
@@ -295,7 +295,7 @@ PY
           }
           S="$(esc "${SUMMARY:-Newswire}")"
           L="$(esc "${LEDE:-—}")"
-          TEXT=$(printf '❌ Post-deploy enrich FAILED (%s)\n*%s* — %s' "$sha" "$S" "$L")
+          TEXT=$(printf '❌ Post-deploy enrich FAILED (%s)\n*%s* — %s\nRun: https://github.com/%s/actions/runs/%s' "$sha" "$S" "$L" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
           curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
