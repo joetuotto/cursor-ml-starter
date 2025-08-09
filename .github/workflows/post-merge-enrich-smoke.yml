@@ -67,16 +67,47 @@ jobs:
           print(f"Validated {len(items)} item(s)")
           PY
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: report.enriched.json
-          path: artifacts/report.enriched.json
+      - name: Slack notify (success)
+        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: good
+          SLACK_MESSAGE: "✅ Enrich smoke passed on main. Artifact: report.enriched.json"
 
-      - name: (Optional) Slack notify
+      - name: Slack notify (failure)
         if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' }}
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_COLOR: danger
-          SLACK_MESSAGE: "Enrich smoke failed on main — check logs/artifacts."
+          SLACK_MESSAGE: "❌ Enrich smoke failed on main — check logs/artifacts."
+
+      - name: Telegram notify (success)
+        if: ${{ success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TG_CHAT_ID }}
+          token: ${{ secrets.TG_BOT_TOKEN }}
+          message: |
+            ✅ Enrich smoke passed on main
+            Repo: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Artifact: report.enriched.json
+
+      - name: Telegram notify (failure)
+        if: ${{ failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TG_CHAT_ID }}
+          token: ${{ secrets.TG_BOT_TOKEN }}
+          message: |
+            ❌ Enrich smoke failed on main
+            Repo: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Check logs/artifacts in Actions.
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.enriched.json
+          path: artifacts/report.enriched.json
