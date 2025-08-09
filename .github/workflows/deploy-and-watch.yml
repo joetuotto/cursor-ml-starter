@@ -9,6 +9,9 @@ env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: ${{ vars.GCP_REGION || 'europe-north1' }}
   DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'api.paranoidmodels.com' }}
+  CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+  CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE || 'https://api.openai.com/v1' }}
+  CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-4o' }}
 
 jobs:
   deploy:

@@ -1,8 +1,14 @@
 name: Post-merge Enrich Smoke
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
+
+env:
+  CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+  CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE || 'https://api.openai.com/v1' }}
+  CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-4o' }}
 
 jobs:
   enrich-smoke:
@@ -66,6 +72,49 @@ jobs:
               jsonschema.validate(it, sch)
           print(f"Validated {len(items)} item(s)")
           PY
+
+  manual-enrich-smoke:
+    name: Manual enrich smoke (workflow_dispatch)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install .; fi
+
+      - name: Prepare sample signal
+        run: |
+          mkdir -p artifacts
+          if [ ! -f artifacts/signal.raw.json ]; then
+            cat > artifacts/signal.raw.json <<'JSON'
+            {"title":"Test signal","url":"https://example.com/test","published_at":"2024-01-01T00:00:00Z"}
+            JSON
+          fi
+
+      - name: Run enrich
+        run: |
+          python -m src.cli enrich \
+            --signal artifacts/signal.raw.json \
+            --schema artifacts/feed_item_schema.json \
+            --out artifacts/report.enriched.json
+
+      - name: Validate schema (non-fatal)
+        run: |
+          python3 scripts/validate_enriched.py || true
+
+      - name: Upload enriched artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.enriched.json
+          path: artifacts/report.enriched.json
 
       - name: Build enrich summary
         id: enrich_summary
