@@ -1,0 +1,82 @@
+name: Post-merge Enrich Smoke
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  enrich-smoke:
+    if: ${{ secrets.CURSOR_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: enrich-smoke-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare inputs (fallback demo)
+        run: |
+          mkdir -p artifacts
+          if [ ! -f artifacts/signal.raw.json ]; then
+            cat > artifacts/signal.raw.json <<'JSON'
+            {"id":"demo-1","category":"economy","signal":"Unexpected correlation spike",
+             "evidence":["pair: X, Y","window: 24h"],"severity":"medium","ts":"$(date -u +%FT%TZ)"}
+            JSON
+          fi
+
+      - name: Enrich (Cursor GPT-5)
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-5' }}
+          USE_GPT5: "true"
+        run: |
+          make enrich
+          test -s artifacts/report.enriched.json
+
+      - name: Quick schema check (defensive)
+        run: |
+          python - <<'PY'
+          import json, jsonschema
+          from pathlib import Path
+          sch = json.loads(Path('artifacts/feed_item_schema.json').read_text())
+          doc = json.loads(Path('artifacts/report.enriched.json').read_text())
+          items = doc.get('items', doc if isinstance(doc, list) else [doc])
+          for it in items:
+              jsonschema.validate(it, sch)
+          print(f"Validated {len(items)} item(s)")
+          PY
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.enriched.json
+          path: artifacts/report.enriched.json
+
+      - name: (Optional) Slack notify
+        if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: "Enrich smoke failed on main — check logs/artifacts."
