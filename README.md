@@ -67,3 +67,25 @@ NOTIFY_DRY_RUN=1 make enrich-smoke-prod-notify
 ```
 
 Tulostaa notifikaatioiden payloadit konsoliin (Slack/TG), ei lähetä niitä.
+
+#### CI env (CURSOR_*)
+
+Workflows käyttävät CURSOR_* -muuttujia Secrets/Vars-lähteistä:
+
+```yaml
+env:
+  CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+  CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE || 'https://api.openai.com/v1' }}
+  CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-4o' }}
+```
+
+Manuaalinen enrich-smoke (workflow_dispatch):
+
+```bash
+gh workflow run post-merge-enrich-smoke.yml --ref main
+sleep 6
+RUN_URL=$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json url --jq '.[0].url'); echo "$RUN_URL"
+RUN_ID=$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+mkdir -p artifacts && gh run download "$RUN_ID" --name report.enriched.json -D artifacts
+jq '{kicker, lede, category, cta}' artifacts/report.enriched.json
+```

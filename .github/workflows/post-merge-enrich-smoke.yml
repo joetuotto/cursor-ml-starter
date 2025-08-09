@@ -111,10 +111,20 @@ jobs:
           python3 scripts/validate_enriched.py || true
 
       - name: Upload enriched artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: report.enriched.json
           path: artifacts/report.enriched.json
+
+      - name: Notify (manual smoke failure)
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          python3 scripts/notify_manual.py --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
 
       - name: Build enrich summary
         id: enrich_summary
