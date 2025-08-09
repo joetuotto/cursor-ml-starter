@@ -1,0 +1,358 @@
+name: Deploy & Watch Certificate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'europe-north1' }}
+  DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'api.paranoidmodels.com' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python (for any build/test)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node (for web build if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build Newswire UI
+        if: ${{ hashFiles('web/package.json') != '' }}
+        working-directory: web
+        run: |
+          npm install
+          npm run build
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Ensure gcloud beta component is available
+        run: |
+          gcloud components install beta -q || true
+
+      - name: Deploy to Cloud Run
+        run: |
+          chmod +x scripts/deploy_cloud_run.sh
+          ./scripts/deploy_cloud_run.sh
+
+      # Valinnainen: odota serttiä/watcheri hoitaa, mutta tehdään kevyt health-probe
+      - name: Pick E2E base URL (custom-domain first)
+        id: pick-base
+        env:
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
+          CLOUD_RUN_URL: ${{ vars.CLOUD_RUN_URL }}
+        run: |
+          set -e
+          pick_url() {
+            URL="$1"
+            if [ -z "$URL" ]; then return 1; fi
+            echo "Probing $URL/health ..."
+            # 10 yritystä, 6s välein
+            for i in $(seq 1 10); do
+              if curl -fsS "$URL/health" >/dev/null 2>&1; then
+                echo "::notice::Health OK at $URL"
+                echo "E2E_BASE_URL=$URL" >> $GITHUB_OUTPUT
+                return 0
+              fi
+              sleep 6
+            done
+            return 1
+          }
+          # yritä custom-domain ensin (https), sitten Cloud Run URL
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            pick_url "https://$CUSTOM_DOMAIN" || true
+          fi
+          if [ -z "${E2E_BASE_URL:-}" ]; then
+            pick_url "${CLOUD_RUN_URL}" || true
+          fi
+          if [ -z "${E2E_BASE_URL:-}" ]; then
+            echo "::warning::Neither domain nor Cloud Run URL passed health probe; skipping E2E."
+            echo "skip_e2e=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip_e2e=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js 20 for web E2E
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install web deps + Playwright
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run E2E smoke (/newswire)
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        working-directory: web
+        env:
+          E2E_BASE_URL: ${{ steps.pick-base.outputs.E2E_BASE_URL }}
+          # Playwright trace aina failureen
+          PWDEBUG: '0'
+        run: |
+          echo "Running smoke against $E2E_BASE_URL"
+          npx playwright test tests/e2e/newswire.smoke.spec.ts --reporter=list
+
+      - name: Upload Playwright traces (if any)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: web/test-results
+name: Deploy & Watch Certificate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'europe-north1' }}
+  DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'api.paranoidmodels.com' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python (for any build/test)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node (for web build if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build Newswire UI
+        working-directory: web
+        run: |
+          npm install
+          npm run build
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Ensure gcloud beta component is available
+        run: |
+          gcloud components install beta -q || true
+
+      - name: Deploy to Cloud Run
+        run: |
+          chmod +x scripts/deploy_cloud_run.sh
+          ./scripts/deploy_cloud_run.sh
+
+      # Valinnainen: odota serttiä/watcheri hoitaa, mutta tehdään kevyt health-probe
+      - name: Pick E2E base URL (custom-domain first)
+        id: pick-base
+        env:
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
+          CLOUD_RUN_URL: ${{ vars.CLOUD_RUN_URL }}
+        run: |
+          set -e
+          pick_url() {
+            URL="$1"
+            if [ -z "$URL" ]; then return 1; fi
+            echo "Probing $URL/health ..."
+            # 10 yritystä, 6s välein
+            for i in $(seq 1 10); do
+              if curl -fsS "$URL/health" >/dev/null 2>&1; then
+                echo "::notice::Health OK at $URL"
+                echo "E2E_BASE_URL=$URL" >> $GITHUB_OUTPUT
+                return 0
+              fi
+              sleep 6
+            done
+            return 1
+          }
+          # yritä custom-domain ensin (https), sitten Cloud Run URL
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            pick_url "https://$CUSTOM_DOMAIN" || true
+          fi
+          if [ -z "${E2E_BASE_URL:-}" ]; then
+            pick_url "${CLOUD_RUN_URL}" || true
+          fi
+          if [ -z "${E2E_BASE_URL:-}" ]; then
+            echo "::warning::Neither domain nor Cloud Run URL passed health probe; skipping E2E."
+            echo "skip_e2e=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip_e2e=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js 20 for web E2E
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install web deps + Playwright
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run E2E smoke (/newswire)
+        if: steps.pick-base.outputs.skip_e2e == 'false'
+        working-directory: web
+        env:
+          E2E_BASE_URL: ${{ steps.pick-base.outputs.E2E_BASE_URL }}
+          # Playwright trace aina failureen
+          PWDEBUG: '0'
+        run: |
+          echo "Running smoke against $E2E_BASE_URL"
+          npx playwright test tests/e2e/newswire.smoke.spec.ts --reporter=list
+
+      - name: Upload Playwright traces (if any)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: web/test-results
+
+      - name: Install GNU make deps (if needed)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y make
+
+      - name: Watch Cloud Run certificate (foreground via Makefile)
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 25m make watch-cert-fg DOMAIN="${DOMAIN}" REGION="${REGION}" 2>&1 | tee /tmp/watch-cert.ci.log
+        continue-on-error: true
+
+      - name: Upload watcher logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-cert-log
+          path: /tmp/watch-cert.ci.log
+
+      - name: Quick health probe (custom domain)
+        shell: bash
+        run: |
+          set -e
+          echo "Probing https://${DOMAIN}/health ..."
+          # Yritä muutaman kerran; sertti voi juuri olla valmistumassa
+          for i in {1..8}; do
+            if curl -fsS "https://${DOMAIN}/health" > /dev/null; then
+              echo "OK"
+              exit 0
+            fi
+            echo "Retry $i..."
+            sleep 15
+          done
+          echo "Health check failed on custom domain." >&2
+          exit 1
+
+      - name: Setup Monitoring (optional)
+        if: ${{ vars.GCP_PROJECT_ID && vars.GCP_REGION && vars.CUSTOM_DOMAIN }}
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
+        run: |
+          make monitor-setup
+
+      - name: Slack notify (success)
+        if: success() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          payload=$(cat <<EOF
+          {
+            "text": ":tada: TLS valmis *${DOMAIN}* :lock:",
+            "attachments": [
+              {"text": "Health OK → https://${DOMAIN}/health"}
+            ]
+          }
+          EOF
+          )
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$payload" "$SLACK_WEBHOOK_URL"
+
+      - name: Slack notify (failure/timeout)
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          payload=$(cat <<EOF
+          {
+            "text": ":warning: TLS epäonnistui tai aikakatkaisi *${DOMAIN}*",
+            "attachments": [
+              {"text": "Tarkista workflow artifact: watch-cert-log"}
+            ]
+          }
+          EOF
+          )
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$payload" "$SLACK_WEBHOOK_URL"
+
+      - name: Telegram notify (success)
+        if: success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          TXT="✅ TLS valmis: ${DOMAIN}\nhttps://${DOMAIN}/health"
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" -d text="$TXT"
+
+      - name: Telegram notify (failure/timeout)
+        if: failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          TXT="⚠️ TLS epäonnistui/timeout: ${DOMAIN}\nKatso artifact-loki."
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" -d text="$TXT"
