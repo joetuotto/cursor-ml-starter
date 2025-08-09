@@ -67,13 +67,35 @@ jobs:
           print(f"Validated {len(items)} item(s)")
           PY
 
+      - name: Build enrich summary
+        id: enrich_summary
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary = 'Newswire'
+          lede = '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:280] or lede
+          out = os.environ.get('GITHUB_OUTPUT')
+          if out:
+              with open(out, 'a') as fh:
+                  fh.write(f"summary={summary}\n")
+                  fh.write(f"lede={lede}\n")
+          PY
+
       - name: Slack notify (success)
         if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_COLOR: good
-          SLACK_MESSAGE: "✅ Enrich smoke passed on main. Artifact: report.enriched.json"
+          SLACK_MESSAGE: ${{ format('✅ Enrich smoke passed on main\n*{0}* — {1}\nArtifact: report.enriched.json', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
 
       - name: Slack notify (failure)
         if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' }}
@@ -81,7 +103,7 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_COLOR: danger
-          SLACK_MESSAGE: "❌ Enrich smoke failed on main — check logs/artifacts."
+          SLACK_MESSAGE: ${{ format('❌ Enrich smoke failed on main\n*{0}* — {1}\nCheck logs/artifacts.', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
 
       - name: Telegram notify (success)
         if: ${{ success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
@@ -89,11 +111,7 @@ jobs:
         with:
           to: ${{ secrets.TG_CHAT_ID }}
           token: ${{ secrets.TG_BOT_TOKEN }}
-          message: |
-            ✅ Enrich smoke passed on main
-            Repo: ${{ github.repository }}
-            Commit: ${{ github.sha }}
-            Artifact: report.enriched.json
+          message: ${{ format('✅ Enrich smoke passed on main\n*{0}* — {1}\nArtifact: report.enriched.json', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
 
       - name: Telegram notify (failure)
         if: ${{ failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
@@ -101,11 +119,7 @@ jobs:
         with:
           to: ${{ secrets.TG_CHAT_ID }}
           token: ${{ secrets.TG_BOT_TOKEN }}
-          message: |
-            ❌ Enrich smoke failed on main
-            Repo: ${{ github.repository }}
-            Commit: ${{ github.sha }}
-            Check logs/artifacts in Actions.
+          message: ${{ format('❌ Enrich smoke failed on main\n*{0}* — {1}\nCheck logs/artifacts.', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

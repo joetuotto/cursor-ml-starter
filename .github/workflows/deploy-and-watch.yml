@@ -185,8 +185,23 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           sha=$(git rev-parse --short HEAD)
+          python - <<'PY' > /tmp/enrich_summary.env
+          import json, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary, lede = 'Newswire', '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:280] or lede
+          print(f"SUMMARY={summary}")
+          print(f"LEDE={lede}")
+          PY
+          source /tmp/enrich_summary.env
           curl -X POST -H 'Content-type: application/json' \
-            --data "$(jq -nc --arg s "$sha" '{text: ("✅ Post-deploy enrich OK ("+$s+"). Artifact: post-deploy-enriched-report")}')" \
+            --data "$(jq -nc --arg s "$sha" --arg sum "$SUMMARY" --arg le "$LEDE" '{text: ("✅ Post-deploy enrich OK ("+$s+")\n*"+$sum+"* — "+$le+"\nArtifact: post-deploy-enriched-report")}')" \
             "$SLACK_WEBHOOK_URL"
 
       - name: Notify Slack (failure)
@@ -195,8 +210,23 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           sha=$(git rev-parse --short HEAD)
+          python - <<'PY' > /tmp/enrich_summary.env
+          import json, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary, lede = 'Newswire', '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:280] or lede
+          print(f"SUMMARY={summary}")
+          print(f"LEDE={lede}")
+          PY
+          source /tmp/enrich_summary.env
           curl -X POST -H 'Content-type: application/json' \
-            --data "$(jq -nc --arg s "$sha" '{text: ("❌ Post-deploy enrich FAILED ("+$s+")")}')" \
+            --data "$(jq -nc --arg s "$sha" --arg sum "$SUMMARY" --arg le "$LEDE" '{text: ("❌ Post-deploy enrich FAILED ("+$s+")\n*"+$sum+"* — "+$le)}')" \
             "$SLACK_WEBHOOK_URL"
 
       - name: Notify Telegram (success)
@@ -206,9 +236,26 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
           sha=$(git rev-parse --short HEAD)
+          python - <<'PY' > /tmp/enrich_summary.env
+          import json, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary, lede = 'Newswire', '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:280] or lede
+          print(f"SUMMARY={summary}")
+          print(f"LEDE={lede}")
+          PY
+          source /tmp/enrich_summary.env
+          TEXT=$(printf '✅ Post-deploy enrich OK (%s)\n*%s* — %s\nArtifact: post-deploy-enriched-report' "$sha" "$SUMMARY" "$LEDE")
           curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TG_CHAT_ID}" \
-            -d text="✅ Post-deploy enrich OK (${sha}). Artifact: post-deploy-enriched-report" > /dev/null
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=Markdown" > /dev/null
 
       - name: Notify Telegram (failure)
         if: failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
@@ -217,9 +264,26 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
           sha=$(git rev-parse --short HEAD)
+          python - <<'PY' > /tmp/enrich_summary.env
+          import json, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary, lede = 'Newswire', '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:280] or lede
+          print(f"SUMMARY={summary}")
+          print(f"LEDE={lede}")
+          PY
+          source /tmp/enrich_summary.env
+          TEXT=$(printf '❌ Post-deploy enrich FAILED (%s)\n*%s* — %s' "$sha" "$SUMMARY" "$LEDE")
           curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TG_CHAT_ID}" \
-            -d text="❌ Post-deploy enrich FAILED (${sha})" > /dev/null
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=Markdown" > /dev/null
 name: Deploy & Watch Certificate
 
 on:
