@@ -28,6 +28,24 @@ jobs:
         run: |
           . .venv/bin/activate
           pytest -q
+      - name: Enrich report (optional)
+        if: ${{ env.USE_GPT5 == 'true' }}
+        env:
+          USE_GPT5: ${{ vars.USE_GPT5 || 'false' }}
+        run: |
+          . .venv/bin/activate
+          echo "USE_GPT5=$USE_GPT5"
+          if [ "$USE_GPT5" = "true" ]; then
+            python -m src.cli enrich --signal ./artifacts/signal.raw.json --schema ./artifacts/feed_item_schema.json --out ./artifacts/report.enriched.json || exit 1
+          else
+            echo "Skipping enrich (USE_GPT5!=true)"
+          fi
+      - name: Upload enriched artifact (if present)
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-enriched
+          path: artifacts/report.enriched.json
+        if: ${{ hashFiles('artifacts/report.enriched.json') != '' }}
       - name: Train (linear cv=4)
         run: |
           . .venv/bin/activate
