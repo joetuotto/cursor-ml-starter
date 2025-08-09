@@ -44,21 +44,8 @@ PY
 .PHONY: enrich-smoke-prod-notify
 enrich-smoke-prod-notify: enrich-smoke-prod
 	@RUN_URL=$$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json url --jq '.[0].url'); \
-		SUM=Newswire; LED=—; \
-	@python - <<'PY' > /tmp/enrich_summary.env || true
-import json, pathlib
-p = pathlib.Path('artifacts/report.enriched.json')
-summary, lede = 'Newswire', '—'
-if p.exists():
-    d = json.loads(p.read_text())
-    if isinstance(d, list):
-        d = d[0] if d else {}
-    summary = (d.get('kicker') or d.get('category') or summary)[:80]
-    lede_txt = (d.get('lede') or d.get('summary') or '')
-    lede = ' '.join(str(lede_txt).split())[:240] or lede
-print(f"SUMMARY={summary}")
-print(f"LEDE={lede}")
-PY
+		SUM=Newswire; LED=—;
+	@python scripts/build_enrich_summary_env.py > /tmp/enrich_summary.env || true
 		source /tmp/enrich_summary.env; \
 		if [ -n "$$SLACK_WEBHOOK_URL" ]; then \
 		  payload=$$(jq -nc --arg sum "$$SUMMARY" --arg le "$$LEDE" --arg url "$$RUN_URL" '{text: ("✅ Enrich smoke (manual)\n*"+$$sum+"* — "+$$le+"\nRun: "+$$url+"\nArtifact: report.enriched.json")}'); \
