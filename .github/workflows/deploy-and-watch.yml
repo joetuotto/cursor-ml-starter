@@ -126,6 +126,13 @@ jobs:
         with:
           name: playwright-traces
           path: web/test-results
+
+      - name: Upload Newswire 404 snapshot (always)
+        if: hashFiles('web/test-artifacts/newswire-404/*') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: newswire-404-snapshot
+          path: web/test-artifacts/newswire-404/*
 name: Deploy & Watch Certificate
 
 on:
