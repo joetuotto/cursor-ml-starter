@@ -4,7 +4,9 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict
+
+from .cursor_client import call_cursor_gpt5 as cursor_call
 
 
 @dataclass
@@ -17,17 +19,7 @@ class CursorGpt5Config:
     backoff_seconds: tuple[float, float] = (2.0, 5.0)
 
 
-def call_cursor_gpt5(
-    prompt: str,
-    system: str,
-    schema: Dict[str, Any],
-    cfg: Optional[CursorGpt5Config] = None,
-) -> Dict[str, Any]:
-    """Placeholder for Cursor GPT-5 API call. Implement real transport later.
-
-    Returns a dict expected to conform to `schema`.
-    """
-    raise NotImplementedError("call_cursor_gpt5 transport not implemented")
+# Transport is provided by cursor_client.call_cursor_gpt5
 
 
 def validate_against_schema(obj: Dict[str, Any], schema: Dict[str, Any]) -> None:
@@ -118,7 +110,16 @@ def enrich_signal(raw_signal: Dict[str, Any], schema: Dict[str, Any]) -> Dict[st
 
     for attempt in range(cfg.retries + 1):
         try:
-            result = call_cursor_gpt5(user_prompt, system_prompt, schema, cfg)
+            result = cursor_call(
+                system=system_prompt,
+                user=user_prompt,
+                model="gpt-5",
+                temperature=cfg.temperature,
+                top_p=cfg.top_p,
+                max_tokens=cfg.max_tokens,
+                seed=cfg.seed,
+                retries=cfg.retries,
+            )
             validate_against_schema(result, schema)
             # Palette guard for SVG
             allowed = ["#0A2342", "#FF7A00", "#F2F4F7", "#1A1F2B"]

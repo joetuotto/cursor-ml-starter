@@ -29,23 +29,20 @@ jobs:
           . .venv/bin/activate
           pytest -q
       - name: Enrich report (optional)
-        if: ${{ env.USE_GPT5 == 'true' }}
+        if: ${{ vars.USE_GPT5 == 'true' && hashFiles('artifacts/signal.raw.json') != '' && hashFiles('artifacts/feed_item_schema.json') != '' }}
         env:
-          USE_GPT5: ${{ vars.USE_GPT5 || 'false' }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL }}
         run: |
           . .venv/bin/activate
-          echo "USE_GPT5=$USE_GPT5"
-          if [ "$USE_GPT5" = "true" ]; then
-            python -m src.cli enrich --signal ./artifacts/signal.raw.json --schema ./artifacts/feed_item_schema.json --out ./artifacts/report.enriched.json || exit 1
-          else
-            echo "Skipping enrich (USE_GPT5!=true)"
-          fi
+          make enrich || (echo "enrich failed" && exit 1)
       - name: Upload enriched artifact (if present)
+        if: ${{ hashFiles('artifacts/report.enriched.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: report-enriched
+          name: report.enriched.json
           path: artifacts/report.enriched.json
-        if: ${{ hashFiles('artifacts/report.enriched.json') != '' }}
       - name: Train (linear cv=4)
         run: |
           . .venv/bin/activate
