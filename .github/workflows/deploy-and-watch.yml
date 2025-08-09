@@ -265,6 +265,46 @@ PY
             --data-urlencode "text=${TEXT}" \
             --data-urlencode "parse_mode=MarkdownV2" > /dev/null
 
+  post-deploy-ui-smoke:
+    name: UI smoke (Playwright @ prod)
+    needs: [deploy]
+    if: ${{ needs.deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROD_URL: https://fertility-api-2q3ac3ofma-lz.a.run.app
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (with Playwright)
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run prod smoke
+        working-directory: web
+        env:
+          PROD_URL: ${{ env.PROD_URL }}
+        run: |
+          npx playwright test tests/e2e/prod.newswire.spec.ts --reporter=line
+
+      - name: Upload Playwright artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-artifacts
+          path: |
+            web/playwright-report/**
+            web/test-results/**
+          if-no-files-found: ignore
+
       - name: Notify Telegram (failure)
         if: failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
         env:
