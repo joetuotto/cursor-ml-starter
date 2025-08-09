@@ -90,7 +90,7 @@ jobs:
           PY
 
       - name: Slack notify (success)
-        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
+        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' && steps.enrich_summary.outcome == 'success' }}
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -98,7 +98,7 @@ jobs:
           SLACK_MESSAGE: ${{ format('✅ Enrich smoke passed on main\n*{0}* — {1}\nArtifact: report.enriched.json', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
 
       - name: Slack notify (failure)
-        if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' }}
+        if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' && steps.enrich_summary.outcome == 'success' }}
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -106,20 +106,48 @@ jobs:
           SLACK_MESSAGE: ${{ format('❌ Enrich smoke failed on main\n*{0}* — {1}\nCheck logs/artifacts.', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
 
       - name: Telegram notify (success)
-        if: ${{ success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
-        uses: appleboy/telegram-action@v1.0.0
-        with:
-          to: ${{ secrets.TG_CHAT_ID }}
-          token: ${{ secrets.TG_BOT_TOKEN }}
-          message: ${{ format('✅ Enrich smoke passed on main\n*{0}* — {1}\nArtifact: report.enriched.json', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
+        if: ${{ success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' && steps.enrich_summary.outcome == 'success' }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SUM: ${{ steps.enrich_summary.outputs.summary }}
+          LED: ${{ steps.enrich_summary.outputs.lede }}
+        run: |
+          esc() { python - "$1" <<'PY'
+import sys, re
+s=sys.argv[1]
+print(re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\\\1', s))
+PY
+          }
+          S="$(esc "${SUM:-Newswire}")"
+          L="$(esc "${LED:-—}")"
+          TEXT="✅ Enrich smoke passed on main\n*${S}* — ${L}\nArtifact: report.enriched.json"
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=MarkdownV2" > /dev/null
 
       - name: Telegram notify (failure)
-        if: ${{ failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
-        uses: appleboy/telegram-action@v1.0.0
-        with:
-          to: ${{ secrets.TG_CHAT_ID }}
-          token: ${{ secrets.TG_BOT_TOKEN }}
-          message: ${{ format('❌ Enrich smoke failed on main\n*{0}* — {1}\nCheck logs/artifacts.', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede) }}
+        if: ${{ failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' && steps.enrich_summary.outcome == 'success' }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SUM: ${{ steps.enrich_summary.outputs.summary }}
+          LED: ${{ steps.enrich_summary.outputs.lede }}
+        run: |
+          esc() { python - "$1" <<'PY'
+import sys, re
+s=sys.argv[1]
+print(re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\\\1', s))
+PY
+          }
+          S="$(esc "${SUM:-Newswire}")"
+          L="$(esc "${LED:-—}")"
+          TEXT="❌ Enrich smoke failed on main\n*${S}* — ${L}\nCheck logs/artifacts."
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=MarkdownV2" > /dev/null
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
