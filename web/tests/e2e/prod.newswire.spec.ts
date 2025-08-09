@@ -15,6 +15,7 @@ async function queryOne(page: any, selectors: string[]) {
 }
 
 test.describe('Prod Newswire smoke', () => {
+  test.setTimeout(30_000);
   test('health 200 + page has enriched items + no console errors', async ({ page }, testInfo) => {
     const consoleErrors: { type: string; text: string }[] = [];
     page.on('console', (msg) => {

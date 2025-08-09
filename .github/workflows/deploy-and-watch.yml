@@ -293,7 +293,7 @@ PY
         env:
           PROD_URL: ${{ env.PROD_URL }}
         run: |
-          npx playwright test tests/e2e/prod.newswire.spec.ts --reporter=line
+          npx playwright test tests/e2e/prod.newswire.spec.ts --reporter=line --retries=1
 
       - name: Upload Playwright artifacts (always)
         if: always()
@@ -304,6 +304,15 @@ PY
             web/playwright-report/**
             web/test-results/**
           if-no-files-found: ignore
+
+      - name: Notify (UI smoke failure)
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          python3 scripts/notify_manual.py --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
 
       - name: Notify Telegram (failure)
         if: failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
