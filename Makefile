@@ -19,7 +19,8 @@ enrich-smoke-prod:
 	@RUN_ID=$$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json databaseId --jq '.[0].databaseId'); \
 		mkdir -p artifacts && gh run download $$RUN_ID --name report.enriched.json -D artifacts || true; \
 		echo "Downloaded artifact (if available) to artifacts/report.enriched.json"; \
-		python - <<'PY' || true
+		:
+	@python - <<'PY' || true
 import json, sys
 from pathlib import Path
 try:
@@ -44,7 +45,7 @@ PY
 enrich-smoke-prod-notify: enrich-smoke-prod
 	@RUN_URL=$$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json url --jq '.[0].url'); \
 		SUM=Newswire; LED=—; \
-		python - <<'PY' > /tmp/enrich_summary.env || true
+	@python - <<'PY' > /tmp/enrich_summary.env || true
 import json, pathlib
 p = pathlib.Path('artifacts/report.enriched.json')
 summary, lede = 'Newswire', '—'
