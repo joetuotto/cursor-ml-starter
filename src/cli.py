@@ -11,6 +11,7 @@ from dotenv import load_dotenv  # type: ignore
 
 from .data import load_data
 from .model import evaluate_and_save, train
+from .paranoid_model.publisher_llm import enrich_signal, write_enriched_report
 
 
 def main(argv: Optional[list[str]] = None) -> None:
@@ -31,6 +32,13 @@ def main(argv: Optional[list[str]] = None) -> None:
     p_pred.add_argument("--model_path", default="./artifacts/model.joblib")
     p_pred.add_argument("--csv", required=True, help="CSV with EMF,Income,Urbanization columns")
     p_pred.add_argument("--out", default=None, help="Optional path to write predictions CSV")
+
+    p_enrich = sub.add_parser("enrich", help="Enrich paranoid-model signal via Cursor GPT-5")
+    p_enrich.add_argument("--signal", required=True, help="Path to raw signal JSON file")
+    p_enrich.add_argument("--schema", required=True, help="Path to FEED_ITEM_SCHEMA JSON")
+    p_enrich.add_argument(
+        "--out", default="./artifacts/report.enriched.json", help="Where to write enriched JSON"
+    )
 
     args = parser.parse_args(argv)
 
@@ -71,6 +79,16 @@ def main(argv: Optional[list[str]] = None) -> None:
         if args.out:
             os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
             pd.DataFrame({"prediction": preds}).to_csv(args.out, index=False)
+
+    elif args.command == "enrich":
+        with open(args.signal, "r", encoding="utf-8") as f:
+            raw_signal = json.load(f)
+        with open(args.schema, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+
+        enriched = enrich_signal(raw_signal, schema)
+        out_path = write_enriched_report(enriched, args.out)
+        print(json.dumps({"enriched_path": out_path}, indent=2))
 
 
 if __name__ == "__main__":

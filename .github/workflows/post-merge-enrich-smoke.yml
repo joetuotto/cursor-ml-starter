@@ -1,0 +1,155 @@
+name: Post-merge Enrich Smoke
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  enrich-smoke:
+    if: ${{ secrets.CURSOR_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: enrich-smoke-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare inputs (fallback demo)
+        run: |
+          mkdir -p artifacts
+          if [ ! -f artifacts/signal.raw.json ]; then
+            cat > artifacts/signal.raw.json <<'JSON'
+            {"id":"demo-1","category":"economy","signal":"Unexpected correlation spike",
+             "evidence":["pair: X, Y","window: 24h"],"severity":"medium","ts":"$(date -u +%FT%TZ)"}
+            JSON
+          fi
+
+      - name: Enrich (Cursor GPT-5)
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-5' }}
+          USE_GPT5: "true"
+        run: |
+          make enrich
+          test -s artifacts/report.enriched.json
+
+      - name: Quick schema check (defensive)
+        run: |
+          python - <<'PY'
+          import json, jsonschema
+          from pathlib import Path
+          sch = json.loads(Path('artifacts/feed_item_schema.json').read_text())
+          doc = json.loads(Path('artifacts/report.enriched.json').read_text())
+          items = doc.get('items', doc if isinstance(doc, list) else [doc])
+          for it in items:
+              jsonschema.validate(it, sch)
+          print(f"Validated {len(items)} item(s)")
+          PY
+
+      - name: Build enrich summary
+        id: enrich_summary
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p = pathlib.Path('artifacts/report.enriched.json')
+          summary = 'Newswire'
+          lede = '—'
+          if p.exists():
+              d = json.loads(p.read_text())
+              if isinstance(d, list):
+                  d = d[0] if d else {}
+              summary = (d.get('kicker') or d.get('category') or summary)[:80]
+              lede_txt = (d.get('lede') or d.get('summary') or '')
+              lede = ' '.join(str(lede_txt).split())[:240] or lede
+          out = os.environ.get('GITHUB_OUTPUT')
+          if out:
+              with open(out, 'a') as fh:
+                  fh.write(f"summary={summary}\n")
+                  fh.write(f"lede={lede}\n")
+          PY
+
+      - name: Slack notify (success)
+        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' && steps.enrich_summary.outcome == 'success' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: good
+          SLACK_MESSAGE: ${{ format('✅ Enrich smoke passed on main\n*{0}* — {1}\nRun: https://github.com/{2}/actions/runs/{3}\nArtifact: report.enriched.json', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede, github.repository, github.run_id) }}
+
+      - name: Slack notify (failure)
+        if: ${{ failure() && secrets.SLACK_WEBHOOK_URL != '' && steps.enrich_summary.outcome == 'success' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: ${{ format('❌ Enrich smoke failed on main\n*{0}* — {1}\nRun: https://github.com/{2}/actions/runs/{3}\nCheck logs/artifacts.', steps.enrich_summary.outputs.summary, steps.enrich_summary.outputs.lede, github.repository, github.run_id) }}
+
+      - name: Telegram notify (success)
+        if: ${{ success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' && steps.enrich_summary.outcome == 'success' }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SUM: ${{ steps.enrich_summary.outputs.summary }}
+          LED: ${{ steps.enrich_summary.outputs.lede }}
+        run: |
+          esc() { python - "$1" <<'PY'
+import sys, re
+s=sys.argv[1]
+print(re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\\\1', s))
+PY
+          }
+          S="$(esc "${SUM:-Newswire}")"
+          L="$(esc "${LED:-—}")"
+          TEXT="✅ Enrich smoke passed on main\n*${S}* — ${L}\nRun: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nArtifact: report.enriched.json"
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=MarkdownV2" > /dev/null
+
+      - name: Telegram notify (failure)
+        if: ${{ failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' && steps.enrich_summary.outcome == 'success' }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SUM: ${{ steps.enrich_summary.outputs.summary }}
+          LED: ${{ steps.enrich_summary.outputs.lede }}
+        run: |
+          esc() { python - "$1" <<'PY'
+import sys, re
+s=sys.argv[1]
+print(re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\\\1', s))
+PY
+          }
+          S="$(esc "${SUM:-Newswire}")"
+          L="$(esc "${LED:-—}")"
+          TEXT="❌ Enrich smoke failed on main\n*${S}* — ${L}\nRun: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nCheck logs/artifacts."
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=MarkdownV2" > /dev/null
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report.enriched.json
+          path: artifacts/report.enriched.json

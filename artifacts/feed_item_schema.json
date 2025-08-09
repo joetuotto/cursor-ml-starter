@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://paranoidmodels.com/schemas/feed_item.json",
+  "title": "Paranoid Feed Item",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "lede",
+    "category",
+    "published_at",
+    "sources",
+    "symbolic_art",
+    "cta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "kicker": { "type": "string" },
+    "title": { "type": "string", "minLength": 3 },
+    "lede": { "type": "string", "minLength": 3, "maxLength": 300 },
+    "why_it_matters": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3, "maxLength": 140 },
+      "minItems": 3,
+      "maxItems": 5
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "geopolitics",
+        "economy",
+        "bio_health",
+        "climate_energy",
+        "cyber_tech",
+        "socio_culture",
+        "supply_chain",
+        "ai_research"
+      ]
+    },
+    "visual_tag": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "confidence_note": { "type": "string", "maxLength": 160 },
+    "fact_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "claim": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["supported", "contested", "uncertain"]
+          },
+          "note": { "type": "string" },
+          "source_url": { "type": "string", "format": "uri" }
+        }
+      },
+      "maxItems": 6
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "minItems": 1
+    },
+    "symbolic_art": {
+      "type": "object",
+      "required": ["style", "palette", "category", "alt", "svg"],
+      "additionalProperties": false,
+      "properties": {
+        "style": { "type": "string", "const": "symbolist-minimal" },
+        "palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["#0A2342", "#FF7A00", "#F2F4F7", "#1A1F2B"]
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "category": { "$ref": "#/properties/category" },
+        "alt": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "svg": { "type": "string", "minLength": 50 }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "required": ["label", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "url": {
+          "type": "string",
+          "pattern": "^/api/(download|paranoid)/.*|^https?://"
+        }
+      }
+    },
+    "published_at": { "type": "string", "format": "date-time" }
+  }
+}
+
