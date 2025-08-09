@@ -133,6 +133,93 @@ jobs:
         with:
           name: newswire-404-snapshot
           path: web/test-artifacts/newswire-404/*
+
+  post-deploy-enrich-smoke:
+    name: Post-deploy enrich smoke
+    needs: deploy
+    if: >
+      ${{ needs.deploy.result == 'success' && vars.USE_GPT5 == 'true' && secrets.CURSOR_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare demo signal if missing
+        run: |
+          mkdir -p artifacts
+          if [ ! -f artifacts/signal.raw.json ]; then
+            echo '{"id":"deploy-smoke","category":"economy","signal":"post-deploy check","severity":"low","ts":"'"$(date -u +%FT%TZ)"'"}' > artifacts/signal.raw.json
+          fi
+
+      - name: Enrich
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_API_BASE: ${{ vars.CURSOR_API_BASE }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'gpt-5' }}
+          USE_GPT5: "true"
+        run: |
+          make enrich
+          test -s artifacts/report.enriched.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-enriched-report
+          path: artifacts/report.enriched.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Notify Slack (success)
+        if: success() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$(jq -nc --arg s "$sha" '{text: ("✅ Post-deploy enrich OK ("+$s+"). Artifact: post-deploy-enriched-report")}')" \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Notify Slack (failure)
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$(jq -nc --arg s "$sha" '{text: ("❌ Post-deploy enrich FAILED ("+$s+")")}')" \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Notify Telegram (success)
+        if: success() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" \
+            -d text="✅ Post-deploy enrich OK (${sha}). Artifact: post-deploy-enriched-report" > /dev/null
+
+      - name: Notify Telegram (failure)
+        if: failure() && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          curl -s "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" \
+            -d text="❌ Post-deploy enrich FAILED (${sha})" > /dev/null
 name: Deploy & Watch Certificate
 
 on:
