@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 COPY artifacts/ /app/artifacts/
+# Copy the built UI static files
+COPY web/dist/ /app/static/
 
 ENV PORT=8000
 EXPOSE 8000

@@ -29,5 +29,3 @@ echo "== API endpoints =="
 curl -fsSL "$ORIGIN/api/paranoid/feed"   >/dev/null
 curl -fsSL "$ORIGIN/api/paranoid/trends" >/dev/null
 echo "Smoke OK"
-
-

@@ -1,0 +1,833 @@
+.PHONY: venv install dev test train predict lint format precommit clean
+
+PY?=.venv/bin/python
+PIP?=.venv/bin/pip
+
+venv:
+	@test -d .venv || python3 -m venv .venv
+
+install: venv
+	@. .venv/bin/activate; $(PIP) install -U pip
+	@. .venv/bin/activate; $(PIP) install -r requirements.txt
+
+dev: venv
+	@. .venv/bin/activate; $(PIP) install -r requirements-dev.txt
+
+test:
+	@. .venv/bin/activate; $(PY) -m pytest -q
+
+train:
+	@. .venv/bin/activate; $(PY) -m src.cli train --csv ./data/data.csv --model linear --cv 4
+
+predict:
+	@. .venv/bin/activate; $(PY) -m src.cli predict --csv ./data/data.csv --out ./artifacts/predictions.csv
+
+lint:
+	@. .venv/bin/activate; ruff check .
+
+format:
+	@. .venv/bin/activate; ruff format .
+
+precommit:
+	@. .venv/bin/activate; pre-commit install
+
+clean:
+	rm -rf .venv artifacts/*.joblib artifacts/*.json artifacts/*.png artifacts/*.csv **/__pycache__ */**/__pycache__ *.egg-info .ruff_cache .pytest_cache
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def test_cli_train_and_predict(tmp_path: Path) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    venv_python = project_root / ".venv/bin/python"
+    assert venv_python.exists(), "Virtualenv not found; create it before running tests"
+
+    # Prepare minimal CSV in temp directory
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = data_dir / "data.csv"
+    csv_path.write_text(
+        """EMF,Income,Urbanization,TFR
+1.0,1000,0.30,1.80
+2.0,2000,0.70,2.10
+1.5,1500,0.50,1.90
+1.2,1200,0.40,1.70
+1.8,1800,0.60,2.00
+2.2,2200,0.80,2.20
+0.9,900,0.20,1.60
+1.1,1100,0.35,1.75
+""",
+        encoding="utf-8",
+    )
+
+    # Train (linear + small CV)
+    train_cmd = [
+        str(venv_python),
+        "-m",
+        "src.cli",
+        "train",
+        "--csv",
+        str(csv_path),
+        "--model",
+        "linear",
+        "--cv",
+        "4",
+    ]
+    env = os.environ.copy()
+    proc_train = subprocess.run(train_cmd, cwd=project_root, capture_output=True, text=True)
+    assert proc_train.returncode == 0, proc_train.stderr
+
+    # Predict
+    pred_cmd = [
+        str(venv_python),
+        "-m",
+        "src.cli",
+        "predict",
+        "--csv",
+        str(csv_path),
+    ]
+    proc_pred = subprocess.run(pred_cmd, cwd=project_root, capture_output=True, text=True)
+    assert proc_pred.returncode == 0, proc_pred.stderr
+    out = json.loads(proc_pred.stdout)
+    assert "predictions" in out and len(out["predictions"]) == 8
+
+## cursor-ml-starter
+
+Pieni regressioprojektin aloituspohja sekä Cursorille valmiit prompt-template:t (katso `prompt_templates.md`).
+
+### Asennus ja ajo
+
+1) Python-ympäristö
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+```
+
+2) Aja testit
+```bash
+pytest -q
+```
+
+3) Treenaa malli ja tallenna artefaktit
+```bash
+python -m src.cli train --csv ./data/data.csv
+```
+
+Yhden komennon ajo:
+```bash
+python3 -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install -r requirements.txt && pytest -q && python -m src.cli train --csv ./data/data.csv
+```
+
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
+matplotlib==3.8.4
+joblib==1.4.2
+pytest==8.2.1
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from src.data import load_data
+from src.model import train
+
+
+def test_load_data(tmp_path: Path) -> None:
+    csv_path = tmp_path / "data.csv"
+    pd.DataFrame({
+        "EMF": [1.0, 2.0],
+        "Income": [1000, 2000],
+        "Urbanization": [0.3, 0.7],
+        "TFR": [1.8, 2.1],
+    }).to_csv(csv_path, index=False)
+
+    df = load_data(str(csv_path))
+    assert set(["EMF", "Income", "Urbanization", "TFR"]).issubset(df.columns)
+
+
+def test_train_predict(tmp_path: Path) -> None:
+    csv_path = tmp_path / "data.csv"
+    pd.DataFrame({
+        "EMF": [1.0, 2.0, 1.5, 1.2, 1.8, 2.2, 0.9, 1.1],
+        "Income": [1000, 2000, 1500, 1200, 1800, 2200, 900, 1100],
+        "Urbanization": [0.3, 0.7, 0.5, 0.4, 0.6, 0.8, 0.2, 0.35],
+        "TFR": [1.8, 2.1, 1.9, 1.7, 2.0, 2.2, 1.6, 1.75],
+    }).to_csv(csv_path, index=False)
+
+    df = load_data(str(csv_path))
+    pipeline, metrics = train(df)
+    assert "rmse" in metrics and "r2" in metrics
+    preds = pipeline.predict(df[["EMF", "Income", "Urbanization"]])
+    assert preds.shape[0] == df.shape[0]
+
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Optional
+
+from src.data import load_data
+from src.model import evaluate_and_save, train
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = argparse.ArgumentParser(description="Train or predict with the regression model")
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_train = sub.add_parser("train", help="Train a model from CSV")
+    p_train.add_argument("--csv", required=True, help="Path to training CSV")
+    p_train.add_argument("--test_size", type=float, default=0.2)
+    p_train.add_argument("--n_estimators", type=int, default=200)
+    p_train.add_argument("--max_depth", type=int, default=None)
+
+    args = parser.parse_args(argv)
+
+    if args.command == "train":
+        data = load_data(args.csv)
+        pipeline, metrics = train(
+            data,
+            test_size=args.test_size,
+            n_estimators=args.n_estimators,
+            max_depth=args.max_depth,
+        )
+        result = evaluate_and_save(pipeline, data, metrics)
+        print(json.dumps({
+            "rmse": result.rmse,
+            "r2": result.r2,
+            "model_path": result.model_path,
+            "metrics_path": result.metrics_path,
+            "feature_plot_path": result.feature_plot_path,
+        }, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass
+from typing import Dict, Tuple
+
+import joblib
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+
+RANDOM_STATE: int = 42
+
+
+@dataclass
+class TrainResult:
+    model_path: str
+    metrics_path: str
+    feature_plot_path: str | None
+    rmse: float
+    r2: float
+
+
+def build_model(n_estimators: int = 200, max_depth: int | None = None) -> Pipeline:
+    """Create a regression pipeline with optional scaling and RandomForestRegressor.
+
+    Returns:
+        A scikit-learn Pipeline ready for fit/predict.
+    """
+    numeric_features = ["EMF", "Income", "Urbanization"]
+
+    preprocessor = ColumnTransformer(
+        transformers=[("num", StandardScaler(), numeric_features)],
+        remainder="drop",
+    )
+
+    regressor = RandomForestRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=RANDOM_STATE,
+        n_jobs=-1,
+    )
+
+    pipeline = Pipeline(steps=[("pre", preprocessor), ("reg", regressor)])
+    return pipeline
+
+
+def train(
+    data: pd.DataFrame,
+    test_size: float = 0.2,
+    n_estimators: int = 200,
+    max_depth: int | None = None,
+) -> Tuple[Pipeline, Dict[str, float]]:
+    """Train a model and return fitted pipeline and metrics on validation split."""
+    features = ["EMF", "Income", "Urbanization"]
+    target = "TFR"
+
+    X = data[features]
+    y = data[target]
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=test_size, random_state=RANDOM_STATE
+    )
+
+    pipeline = build_model(n_estimators=n_estimators, max_depth=max_depth)
+    pipeline.fit(X_train, y_train)
+
+    preds = pipeline.predict(X_val)
+    rmse = float(np.sqrt(mean_squared_error(y_val, preds)))
+    r2 = float(r2_score(y_val, preds))
+
+    metrics = {"rmse": rmse, "r2": r2}
+    return pipeline, metrics
+
+
+def _ensure_dir(path: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+
+def evaluate_and_save(
+    pipeline: Pipeline,
+    data: pd.DataFrame,
+    metrics: Dict[str, float],
+    model_path: str = "./artifacts/model.joblib",
+    metrics_path: str = "./artifacts/metrics.json",
+    feature_plot_path: str = "./artifacts/feature_importance.png",
+) -> TrainResult:
+    """Persist model, metrics, and feature importance plot if available."""
+
+    _ensure_dir(model_path)
+    _ensure_dir(metrics_path)
+    _ensure_dir(feature_plot_path)
+
+    joblib.dump(pipeline, model_path)
+
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+
+    feature_plot: str | None = None
+    reg = pipeline.named_steps.get("reg")
+    if hasattr(reg, "feature_importances_"):
+        importances = reg.feature_importances_
+        labels = ["EMF", "Income", "Urbanization"]
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.bar(labels, importances)
+        ax.set_title("Feature importances")
+        ax.set_ylabel("Importance")
+        fig.tight_layout()
+        plt.savefig(feature_plot_path)
+        plt.close(fig)
+        feature_plot = feature_plot_path
+
+    return TrainResult(
+        model_path=model_path,
+        metrics_path=metrics_path,
+        feature_plot_path=feature_plot,
+        rmse=float(metrics["rmse"]),
+        r2=float(metrics["r2"]),
+    )
+
+from __future__ import annotations
+
+import os
+from typing import List
+
+import pandas as pd
+
+
+REQUIRED_COLUMNS: List[str] = ["EMF", "Income", "Urbanization", "TFR"]
+
+
+def load_data(csv_path: str) -> pd.DataFrame:
+    """Load dataset from CSV and validate required columns.
+
+    Args:
+        csv_path: Path to CSV file containing training data.
+
+    Returns:
+        A pandas DataFrame with validated schema.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If required columns are missing or target has NaNs.
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"File not found: {csv_path}")
+
+    data = pd.read_csv(csv_path)
+
+    missing = [c for c in REQUIRED_COLUMNS if c not in data.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    if data["TFR"].isna().any():
+        raise ValueError("Target column 'TFR' contains NaN values")
+
+    return data
+
+EMF,Income,Urbanization,TFR
+1.0,1000,0.30,1.80
+2.0,2000,0.70,2.10
+1.5,1500,0.50,1.90
+1.2,1200,0.40,1.70
+1.8,1800,0.60,2.00
+2.2,2200,0.80,2.20
+0.9,900,0.20,1.60
+1.1,1100,0.35,1.75
+EMF,Income,Urbanization,TFR
+1.0,1000,0.30,1.80
+2.0,2000,0.70,2.10
+1.5,1500,0.50,1.90
+1.2,1200,0.40,1.70
+1.8,1800,0.60,2.00
+2.2,2200,0.80,2.20
+0.9,900,0.20,1.60
+1.1,1100,0.35,1.75
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pandas as pd
+
+from src.data import load_data
+from src.model import train
+
+
+def test_load_data(tmp_path: Path) -> None:
+    csv_path = tmp_path / "data.csv"
+    pd.DataFrame({
+        "EMF": [1.0, 2.0],
+        "Income": [1000, 2000],
+        "Urbanization": [0.3, 0.7],
+        "TFR": [1.8, 2.1],
+    }).to_csv(csv_path, index=False)
+
+    df = load_data(str(csv_path))
+    assert set(["EMF", "Income", "Urbanization", "TFR"]).issubset(df.columns)
+
+
+def test_train_predict(tmp_path: Path) -> None:
+    csv_path = tmp_path / "data.csv"
+    pd.DataFrame({
+        "EMF": [1.0, 2.0, 1.5, 1.2, 1.8, 2.2, 0.9, 1.1],
+        "Income": [1000, 2000, 1500, 1200, 1800, 2200, 900, 1100],
+        "Urbanization": [0.3, 0.7, 0.5, 0.4, 0.6, 0.8, 0.2, 0.35],
+        "TFR": [1.8, 2.1, 1.9, 1.7, 2.0, 2.2, 1.6, 1.75],
+    }).to_csv(csv_path, index=False)
+
+    df = load_data(str(csv_path))
+    pipeline, metrics = train(df)
+    assert "rmse" in metrics and "r2" in metrics
+    preds = pipeline.predict(df[["EMF", "Income", "Urbanization"]])
+    assert preds.shape[0] == df.shape[0]
+
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Optional
+
+from .data import load_data
+from .model import evaluate_and_save, train
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = argparse.ArgumentParser(description="Train or predict with the regression model")
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_train = sub.add_parser("train", help="Train a model from CSV")
+    p_train.add_argument("--csv", required=True, help="Path to training CSV")
+    p_train.add_argument("--test_size", type=float, default=0.2)
+    p_train.add_argument("--n_estimators", type=int, default=200)
+    p_train.add_argument("--max_depth", type=int, default=None)
+
+    args = parser.parse_args(argv)
+
+    if args.command == "train":
+        data = load_data(args.csv)
+        pipeline, metrics = train(
+            data,
+            test_size=args.test_size,
+            n_estimators=args.n_estimators,
+            max_depth=args.max_depth,
+        )
+        result = evaluate_and_save(pipeline, data, metrics)
+        print(json.dumps({
+            "rmse": result.rmse,
+            "r2": result.r2,
+            "model_path": result.model_path,
+            "metrics_path": result.metrics_path,
+            "feature_plot_path": result.feature_plot_path,
+        }, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass
+from typing import Dict, Tuple
+
+import joblib
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+
+RANDOM_STATE: int = 42
+
+
+@dataclass
+class TrainResult:
+    model_path: str
+    metrics_path: str
+    feature_plot_path: str | None
+    rmse: float
+    r2: float
+
+
+def build_model(n_estimators: int = 200, max_depth: int | None = None) -> Pipeline:
+    """Create a regression pipeline with optional scaling and RandomForestRegressor.
+
+    Returns:
+        A scikit-learn Pipeline ready for fit/predict.
+    """
+    numeric_features = ["EMF", "Income", "Urbanization"]
+
+    preprocessor = ColumnTransformer(
+        transformers=[("num", StandardScaler(), numeric_features)],
+        remainder="drop",
+    )
+
+    regressor = RandomForestRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=RANDOM_STATE,
+        n_jobs=-1,
+    )
+
+    pipeline = Pipeline(steps=[("pre", preprocessor), ("reg", regressor)])
+    return pipeline
+
+
+def train(
+    data: pd.DataFrame,
+    test_size: float = 0.2,
+    n_estimators: int = 200,
+    max_depth: int | None = None,
+) -> Tuple[Pipeline, Dict[str, float]]:
+    """Train a model and return fitted pipeline and metrics on validation split."""
+    features = ["EMF", "Income", "Urbanization"]
+    target = "TFR"
+
+    X = data[features]
+    y = data[target]
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=test_size, random_state=RANDOM_STATE
+    )
+
+    pipeline = build_model(n_estimators=n_estimators, max_depth=max_depth)
+    pipeline.fit(X_train, y_train)
+
+    preds = pipeline.predict(X_val)
+    rmse = float(np.sqrt(mean_squared_error(y_val, preds)))
+    r2 = float(r2_score(y_val, preds))
+
+    metrics = {"rmse": rmse, "r2": r2}
+    return pipeline, metrics
+
+
+def _ensure_dir(path: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+
+def evaluate_and_save(
+    pipeline: Pipeline,
+    data: pd.DataFrame,
+    metrics: Dict[str, float],
+    model_path: str = "./artifacts/model.joblib",
+    metrics_path: str = "./artifacts/metrics.json",
+    feature_plot_path: str = "./artifacts/feature_importance.png",
+) -> TrainResult:
+    """Persist model, metrics, and feature importance plot if available."""
+
+    _ensure_dir(model_path)
+    _ensure_dir(metrics_path)
+    _ensure_dir(feature_plot_path)
+
+    joblib.dump(pipeline, model_path)
+
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+
+    feature_plot: str | None = None
+    reg = pipeline.named_steps.get("reg")
+    if hasattr(reg, "feature_importances_"):
+        importances = reg.feature_importances_
+        labels = ["EMF", "Income", "Urbanization"]
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.bar(labels, importances)
+        ax.set_title("Feature importances")
+        ax.set_ylabel("Importance")
+        fig.tight_layout()
+        plt.savefig(feature_plot_path)
+        plt.close(fig)
+        feature_plot = feature_plot_path
+
+    return TrainResult(
+        model_path=model_path,
+        metrics_path=metrics_path,
+        feature_plot_path=feature_plot,
+        rmse=float(metrics["rmse"]),
+        r2=float(metrics["r2"]),
+    )
+
+from __future__ import annotations
+
+import os
+from typing import List
+
+import pandas as pd
+
+
+REQUIRED_COLUMNS: List[str] = ["EMF", "Income", "Urbanization", "TFR"]
+
+
+def load_data(csv_path: str) -> pd.DataFrame:
+    """Load dataset from CSV and validate required columns.
+
+    Args:
+        csv_path: Path to CSV file containing training data.
+
+    Returns:
+        A pandas DataFrame with validated schema.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If required columns are missing or target has NaNs.
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"File not found: {csv_path}")
+
+    data = pd.read_csv(csv_path)
+
+    missing = [c for c in REQUIRED_COLUMNS if c not in data.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    if data["TFR"].isna().any():
+        raise ValueError("Target column 'TFR' contains NaN values")
+
+    return data
+
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
+matplotlib==3.8.4
+joblib==1.4.2
+pytest==8.2.1
+## cursor-ml-starter
+
+Pieni regressioprojektin aloituspohja sekä Cursorille valmiit prompt-template:t (katso `prompt_templates.md`).
+
+### Asennus ja ajo (yksi komento)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install -r requirements.txt && python -m src.cli train --csv ./data/data.csv
+```
+
+### Rakenne
+
+- `data/data.csv` — demo-data
+- `src/data.py` — datan luku ja validointi
+- `src/model.py` — mallin rakennus, treenaus, evaluointi, tallennus
+- `src/cli.py` — komentoriviliittymä (train/predict)
+- `tests/` — perusyksikkötestit
+- `artifacts/` — mallit ja metriikat tänne
+
+Hyvä kysymys. Kun haluat, että **GPT koodaa mallin Cursorissa** pelkällä tekstillä, kaikkein tärkeintä on *rakenne*: kerro tavoite → rajat → tiedostot → miten se ajetaan → millä mitataan onnistuminen. Alla copy–paste–valmiit “ohjemallit” Cursor-chatille (tai `prompt.txt`iin), joilla saat ajettavaa koodia heti.
+
+---
+
+# 1) Yksi metaprompti koko sessiolle (aseta ensin)
+
+Laita tämä Cursor-chatin alkuun. Se ohjaa mallia koodaamaan täsmällisesti.
+
+```
+Toimi pääohjelmoijana Cursor-projektissani. Tuota vain ajettavaa, minimaalista koodia ja tarvittavat tiedostot. 
+Sääntösi:
+- Luo pyydetyt tiedostot täsmälleen nimillä ja poluilla, älä lisää ylimääräisiä.
+- Lisää requirements.txt vain välttämättömillä riippuvuuksilla.
+- Lisää docstringit (mitä, syötteet, tuotokset).
+- Lisää virheenkäsittely (puuttuva tiedosto/sarake).
+- Kiinnitä siemen satunnaisuuteen (repro).
+- Kerro lopuksi yksi komento, jolla koko juttu ajetaan.
+- Jos jokin kohta on epäselvä, ehdota 2–3 turvallista oletusta ja jatka.
+```
+
+---
+
+# 2) “Uusi malli” – yleispohja (kopioi ja täytä)
+
+Kun pyydät uutta mallia, käytä tätä runkoa ja täydennä vain sisältö:
+
+```
+TEHTÄVÄ: Rakenna [mallityyppi, esim. regressio-/luokittelumalli] datasta [tiedosto/taulu].
+KONTEKSTI: Data sijaitsee polussa ./data/data.csv. Oletetaan sarakkeet: [lista]. Kohdemuuttuja: [y].
+TULOS (tiedostot):
+- src/data.py (load_data: polku → pd.DataFrame, validointi: pakolliset sarakkeet)
+- src/model.py (build_model, train, evaluate, save_model)
+- src/cli.py (komentorivi: train/predict; argparse)
+- tests/test_basic.py (perustestit: datan luku, mallin fit/predict)
+- requirements.txt (vain: pandas, numpy, scikit-learn, matplotlib)
+- README.md (ajokäsky, asennus)
+KRITEERIT:
+- Train/val split (random_state=42), metriikat: RMSE ja R² (regressio) / AUC ja accuracy (luokittelu).
+- Tallennus: mallin tiedosto ./artifacts/model.joblib, metriikat ./artifacts/metrics.json, kuva ./artifacts/feature_importance.png (jos mahdollista).
+RAJOITUKSET:
+- Ei deep learning -kirjastoja. Ei seabornia. Pidä koodi lyhyenä ja selkeänä.
+AJO:
+- Yksi komento, joka asentaa riippuvuudet ja kouluttaa mallin datalla: 
+  `pip install -r requirements.txt && python -m src.cli train --csv ./data/data.csv`
+```
+
+---
+
+# 3) Esimerkkipromptit (copy–paste)
+
+## (A) Regressiomalli (scikit-learn)
+
+```
+Rakenna regressiopipeline TFR:n ennustamiseen seuraavista piirteistä: EMF, Income, Urbanization.
+Käytä RandomForestRegressoria ja StandardScaleria (tarvittaessa). 
+Tiedostot ja säännöt kuten “Uusi malli – yleispohja” -kohdassa, mutta metriikat: RMSE ja R².
+Lisää feature_importances_-visualisointi matplotlibilla → tallenna ./artifacts/feature_importance.png.
+```
+
+## (B) Aikasarja (ARIMA, statsmodels)
+
+```
+Rakenna ARIMA-ennustemalli (statsmodels) sarakkeelle TFR kuukausitasolla.
+Input: ./data/tfr_timeseries.csv (sarakkeet: date, tfr). Varmista date-parsinta.
+Tiedostot:
+- src/ts_model.py (train_arima(order=(1,1,1)), forecast(h), save/load)
+- src/cli.py (komennot: fit, forecast --h 12, piirrä kuva ./artifacts/forecast.png)
+- requirements.txt (pandas, numpy, matplotlib, statsmodels)
+Lisää virheenkäsittely puuttuville/epäsäännöllisille päivämäärille.
+Ajo: yksi komento asentaa ja ajaa 12 kk ennusteen.
+```
+
+## (C) Luokittelu + ristivalidointi
+
+```
+Rakenna luokittelumalli (LogisticRegression) kohteelle y (0/1).
+Käytä StratifiedKFold(5) ja raportoi keski-AUC, accuracy, precision, recall.
+Tuota myös ROC-käyrä kuvaan ./artifacts/roc.png.
+Tiedostot ja malli kuten yleispohjassa. Lisää tests/test_cv.py, jossa tarkistetaan että k-fold toimii.
+```
+
+## (D) Kevyt kausalikehikko (valinnainen)
+
+```
+Luo yksinkertainen kausaalianalyysi: DAG-kuvaus kommenteissa (X→Y, Z confounder).
+Mittaa treatment X vaikutus Y:hen perusmenetelmillä (matching tai stratified regression).
+Ei raskaita kirjastoja (ei DoWhy/EconML), tee kevyt toteutus: 
+- Propensity score logistisella regressiolla
+- IPTW-arvio ja yksinkertainen standard error
+Raportoi keskeiset luvut ./artifacts/causal.json.
+```
+
+---
+
+# 4) Iteratiiviset komennot (kun haluat muokata)
+
+* **“Lisää validointi”**
+
+  ```
+  Päivitä src/data.py: lisää Pandera-tyylinen validointi tai oma tarkistus:
+  - pakolliset sarakkeet [..]
+  - ei NaN kohdemuuttujassa
+  - jos sarake puuttuu → nosta ValueError selkeällä viestillä
+  Lisää unit test, joka varmistaa virheen laukeavan.
+  ```
+
+* **“Refaktoroi modulaariseksi”**
+
+  ```
+  Pilko src/model.py kolmeen osaan: model_def.py (rakennus), train.py, eval.py. 
+  Pidä julkiset funktiot: build_model, train, evaluate. Päivitä cli vastaavasti.
+  ```
+
+* **“Lisää konfiguroitavuus”**
+
+  ```
+  Lisää config.yaml (mallin hyperparametrit). Lue se src/cli.py:ssä.
+  Tarjoa oletusarvot mutta anna komentoriviltä override (--n_estimators jne.).
+  ```
+
+* **“Kirjoita README”**
+
+  ```
+  Luo README.md: Asennus, tiedostorakenne, dataformaatti, ajokäskyt, metriikat, tulosten polut.
+  ```
+
+* **“Lisää testit”**
+
+  ```
+  Laajenna tests/: 
+  - test_data_load (puuttuva sarake nostaa virheen)
+  - test_train_predict (fit toimii ja predict palauttaa muodon (n,))
+  - test_cli_train (subprocess: komento ajaa ja luo artifacts)
+  ```
+
+---
+
+# 5) Pikalista, joka kannattaa toistaa jokaisessa pyynnössä
+
+* **Tavoite** (mitä mallin pitää tehdä)
+* **Data** (polku, sarakkeet, kohde)
+* **Tiedostot** (nimet ja polut)
+* **Metriikat** (miten arvioidaan)
+* **Virheenkäsittely** (pakollinen)
+* **Repro** (random_state, siemen)
+* **Ajo** (tarkka komento)
+
+---
+
+# 6) Haluatko, että teen sinulle valmiin “prompt_templates.md” + esimerkkiprojektin?
+
+Voin tehdä Cursor-kansioon:
+
+* `prompt_templates.md` (kaikki yllä olevat pohjat)
+* `data/`-kansiot + pieni `data.csv`
+* Valmiin “regressiopohjan” joka rakentuu yhdellä komennolla
+
+Sano vain mille mallityypille aloitetaan (regressio / aikasarja / luokittelu / kevyt kausalimalli), niin teen sinulle heti ”avaa ja aja” -paketin.
+
+

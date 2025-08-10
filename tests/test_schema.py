@@ -24,7 +24,7 @@ def test_feed_item_schema_loads_and_validates_minimal() -> None:
                 "<rect width='320' height='180' fill='#0A2342'/></svg>"
             ),
         },
-        "cta": {"label": "Download report", "url": "/api/download?id=report"},
+        "cta": {"label": "Download report", "url": "/api/download/report?id=report"},
         "published_at": "2025-01-01T00:00:00Z",
     }
     Draft202012Validator(schema).validate(sample)
