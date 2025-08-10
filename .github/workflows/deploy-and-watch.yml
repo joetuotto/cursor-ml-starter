@@ -373,9 +373,23 @@ PY
     name: UI Smoke (post-deploy)
     needs: [deploy]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        envset:
+          - name: production
+            url: ${{ vars.PROD_URL || 'https://api.paranoidmodels.com' }}
+          - name: staging
+            url: ${{ vars.STAGING_URL || '' }}   # jätä tyhjäksi jos ei käytössä
     env:
-      PROD_URL: ${{ vars.PROD_URL || 'https://api.paranoidmodels.com' }}
+      PROD_URL: ${{ matrix.envset.url }}
+      ENV_NAME: ${{ matrix.envset.name }}
     steps:
+      - name: Skip if URL empty
+        if: ${{ env.PROD_URL == '' }}
+        run: echo "No URL for $ENV_NAME, skipping." && exit 0
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -388,28 +402,31 @@ PY
         working-directory: web
         run: npm i puppeteer
 
-      - name: Run Puppeteer smoke
+      - name: Run Puppeteer smoke (${{ env.ENV_NAME }})
         id: smoke
         working-directory: web
         shell: bash
+        timeout-minutes: 5
         run: |
-          echo "PROD_URL=${PROD_URL}"
+          echo "ENV=${ENV_NAME} PROD_URL=${PROD_URL}"
           mkdir -p artifacts
-          node tests/e2e/prod.newswire.smoke.cjs 2>&1 | tee artifacts/ui-smoke.log
+          node tests/e2e/prod.newswire.smoke.cjs 2>&1 | tee "artifacts/ui-smoke_${ENV_NAME}.log"
 
-      - name: Upload smoke artifacts
+      - name: Upload smoke artifacts (${{ env.ENV_NAME }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-smoke-post-deploy
+          name: ui-smoke-post-deploy-${{ env.ENV_NAME }}
           path: |
-            web/artifacts/ui-smoke.log
+            web/artifacts/ui-smoke_${{ env.ENV_NAME }}.log
           if-no-files-found: ignore
 
-      - name: Failure notify (Slack/TG)
+      - name: Failure notify (Slack/TG) — ${{ env.ENV_NAME }}
         if: failure()
         run: |
-          python3 scripts/notify_manual.py --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          python3 scripts/notify_manual.py \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --extra "env=${ENV_NAME}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TG_BOT_TOKEN:      ${{ secrets.TG_BOT_TOKEN }}

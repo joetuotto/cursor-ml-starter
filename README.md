@@ -144,3 +144,12 @@ jq '{kicker, lede, category, cta}' artifacts/report.enriched.json
 
 - CI (manual): Actions → UI Smoke (Puppeteer) → Run workflow
   (Optional prod_url overrides default)
+
+### Multi-Environment Matrix Testing
+Post-deploy UI smoke tests run against multiple environments:
+- **Production**: `PROD_URL` (vars.PROD_URL or default)
+- **Staging**: `STAGING_URL` (vars.STAGING_URL, skipped if empty)
+
+Configure in GitHub repository settings:
+- Variables: `PROD_URL`, `STAGING_URL` 
+- Secrets: `SLACK_WEBHOOK_URL`, `TG_BOT_TOKEN`, `TG_CHAT_ID` (optional)
