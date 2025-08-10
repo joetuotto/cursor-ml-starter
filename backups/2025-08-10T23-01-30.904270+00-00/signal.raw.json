@@ -1,0 +1,22 @@
+{
+  "id": "paranoid_0014",
+  "timestamp": "2025-08-10T04:44:36.999047Z",
+  "category": "paranoid_detection",
+  "signal_type": "multitarget_anomaly",
+  "risk_factors": [
+    "high_sensitivity",
+    "suppression_imminent",
+    "narrative_manipulation"
+  ],
+  "severity": "high",
+  "evidence": [
+    "propaganda_spike: 4.74"
+  ],
+  "scores": {
+    "sensitive_class": 1.0,
+    "suppression_6w": 1.0,
+    "narrative_shift": 0.937888198757764,
+    "conflict_intensity": 0.5026107979844753
+  },
+  "confidence": 0.95
+}

@@ -1,0 +1,343 @@
+{
+  "alerts": [
+    {
+      "uid": "paranoid-auc-drop",
+      "title": "Paranoid AUC Drop Critical",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "expr": "paranoid_auc",
+            "interval": "",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "model": {
+            "expression": "A < 0.80",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200,
+            "refId": "B",
+            "type": "math"
+          }
+        }
+      ],
+      "intervalSeconds": 60,
+      "maxDataPoints": 43200,
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "AUC has dropped below 80% critical threshold",
+        "runbook_url": "https://docs.paranoidmodels.com/runbooks/auc-drop",
+        "summary": "Critical AUC drop detected"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "ml-ops"
+      }
+    },
+    {
+      "uid": "paranoid-bias-violation",
+      "title": "Paranoid Bias Violation",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 300,
+            "to": 0
+          },
+          "model": {
+            "expr": "paranoid_fairness_max_delta_auc",
+            "interval": "",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "model": {
+            "expression": "A > 0.10",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200,
+            "refId": "B",
+            "type": "math"
+          }
+        }
+      ],
+      "intervalSeconds": 60,
+      "maxDataPoints": 43200,
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "2m",
+      "annotations": {
+        "description": "Fairness violation: Delta-AUC exceeds 10% threshold",
+        "runbook_url": "https://docs.paranoidmodels.com/runbooks/bias-violation",
+        "summary": "Model bias violation detected"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "ml-ethics"
+      }
+    },
+    {
+      "uid": "paranoid-quality-gates-fail",
+      "title": "Paranoid Quality Gates Failed",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 120,
+            "to": 0
+          },
+          "model": {
+            "expr": "paranoid_quality_gates_passed",
+            "interval": "",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "model": {
+            "expression": "A == 0",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200,
+            "refId": "B",
+            "type": "math"
+          }
+        }
+      ],
+      "intervalSeconds": 30,
+      "maxDataPoints": 43200,
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "1m",
+      "annotations": {
+        "description": "Production quality gates have failed - block deployments",
+        "runbook_url": "https://docs.paranoidmodels.com/runbooks/quality-gates-fail",
+        "summary": "Quality gates FAILED"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "ml-ops"
+      }
+    },
+    {
+      "uid": "paranoid-drift-critical",
+      "title": "Paranoid Concept Drift Critical",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 120,
+            "to": 0
+          },
+          "model": {
+            "expr": "paranoid_drift_alerts_critical",
+            "interval": "",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "model": {
+            "expression": "A > 0",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200,
+            "refId": "B",
+            "type": "math"
+          }
+        }
+      ],
+      "intervalSeconds": 60,
+      "maxDataPoints": 43200,
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "1m",
+      "annotations": {
+        "description": "Critical concept drift detected - model performance may be compromised",
+        "runbook_url": "https://docs.paranoidmodels.com/runbooks/concept-drift",
+        "summary": "Critical concept drift detected"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "ml-ops"
+      }
+    },
+    {
+      "uid": "paranoid-calibration-drift",
+      "title": "Paranoid Calibration Drift",
+      "condition": "B",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 300,
+            "to": 0
+          },
+          "model": {
+            "expr": "paranoid_calibration_ece",
+            "interval": "",
+            "refId": "A"
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "model": {
+            "expression": "A > 0.05",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200,
+            "refId": "B",
+            "type": "math"
+          }
+        }
+      ],
+      "intervalSeconds": 60,
+      "maxDataPoints": 43200,
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "3m",
+      "annotations": {
+        "description": "Model calibration has drifted beyond acceptable threshold",
+        "runbook_url": "https://docs.paranoidmodels.com/runbooks/calibration-drift",
+        "summary": "Calibration drift detected"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "ml-ops"
+      }
+    }
+  ],
+  "contactPoints": [
+    {
+      "uid": "slack-ml-ops",
+      "name": "Slack ML-Ops",
+      "type": "slack",
+      "settings": {
+        "url": "${SLACK_WEBHOOK_URL}",
+        "channel": "#ml-ops-alerts",
+        "username": "Paranoid Alerting",
+        "iconEmoji": ":warning:",
+        "title": "🚨 Paranoid Model Alert",
+        "text": "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}"
+      }
+    },
+    {
+      "uid": "slack-ml-ethics",
+      "name": "Slack ML-Ethics",
+      "type": "slack",
+      "settings": {
+        "url": "${SLACK_WEBHOOK_URL}",
+        "channel": "#ml-ethics-alerts",
+        "username": "Paranoid Fairness",
+        "iconEmoji": ":balance_scale:",
+        "title": "⚖️ Fairness Alert",
+        "text": "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}"
+      }
+    },
+    {
+      "uid": "telegram-ops",
+      "name": "Telegram Ops",
+      "type": "telegram",
+      "settings": {
+        "bottoken": "${TG_BOT_TOKEN}",
+        "chatid": "${TG_CHAT_ID}",
+        "message": "🚨 *Paranoid Alert*\n{{ range .Alerts }}*{{ .Annotations.summary }}*\n{{ .Annotations.description }}{{ end }}"
+      }
+    },
+    {
+      "uid": "pagerduty-critical",
+      "name": "PagerDuty Critical",
+      "type": "pagerduty",
+      "settings": {
+        "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}",
+        "severity": "critical",
+        "customDetails": {
+          "component": "{{ .GroupLabels.component }}",
+          "runbook": "{{ .Annotations.runbook_url }}"
+        }
+      }
+    }
+  ],
+  "notificationPolicies": [
+    {
+      "receiver": "slack-ml-ops",
+      "object_matchers": [
+        ["team", "=", "ml-ops"]
+      ],
+      "group_by": ["alertname", "severity"],
+      "group_wait": "10s",
+      "group_interval": "5m",
+      "repeat_interval": "4h",
+      "routes": [
+        {
+          "receiver": "pagerduty-critical",
+          "object_matchers": [
+            ["severity", "=", "critical"]
+          ],
+          "group_wait": "0s",
+          "repeat_interval": "15m"
+        }
+      ]
+    },
+    {
+      "receiver": "slack-ml-ethics",
+      "object_matchers": [
+        ["team", "=", "ml-ethics"]
+      ],
+      "group_by": ["alertname"],
+      "group_wait": "5s",
+      "group_interval": "2m",
+      "repeat_interval": "2h"
+    },
+    {
+      "receiver": "telegram-ops",
+      "object_matchers": [
+        ["component", "=", "pipeline"],
+        ["component", "=", "deployment"]
+      ],
+      "group_by": ["component"],
+      "group_wait": "30s",
+      "group_interval": "10m",
+      "repeat_interval": "6h"
+    }
+  ]
+}

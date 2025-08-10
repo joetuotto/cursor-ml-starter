@@ -1,0 +1,510 @@
+{
+  "templates": {
+    "auc_drop_critical": {
+      "channel": "#ml-ops-alerts",
+      "username": "Paranoid Alerting",
+      "icon_emoji": ":rotating_light:",
+      "blocks": [
+        {
+          "type": "header",
+          "text": {
+            "type": "plain_text",
+            "text": "🚨 CRITICAL: AUC Drop Detected"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Target:* {{ $labels.target }}"
+            },
+            {
+              "type": "mrkdwn", 
+              "text": "*Current AUC:* {{ $value | humanizePercentage }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Threshold:* 80%"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Environment:* {{ $labels.environment }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Severity:* CRITICAL"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Started:* {{ .StartsAt | humanizeDate }}"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Description:* Model AUC has dropped below critical threshold. This indicates significant performance degradation that requires immediate attention."
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Immediate Actions Required:*\n• Check data quality and recent changes\n• Investigate concept drift indicators\n• Consider emergency rollback if AUC < 75%\n• Schedule model retraining"
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📊 View Dashboard"
+              },
+              "style": "primary",
+              "url": "https://grafana.paranoidmodels.com/d/paranoid-dashboard"
+            },
+            {
+              "type": "button", 
+              "text": {
+                "type": "plain_text",
+                "text": "📖 Runbook"
+              },
+              "url": "https://docs.paranoidmodels.com/runbooks/auc-drop"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "🔄 Emergency Rollback"
+              },
+              "style": "danger",
+              "url": "https://ci.paranoidmodels.com/emergency-rollback"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "🤖 Paranoid Model V5 | Alert ID: paranoid-auc-drop-{{ $labels.target }} | <https://prometheus.paranoidmodels.com|Prometheus>"
+            }
+          ]
+        }
+      ]
+    },
+    "bias_violation": {
+      "channel": "#ml-ethics-alerts",
+      "username": "Fairness Guardian",
+      "icon_emoji": ":balance_scale:",
+      "blocks": [
+        {
+          "type": "header",
+          "text": {
+            "type": "plain_text",
+            "text": "⚖️ CRITICAL: Model Bias Violation"
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":warning: *IMMEDIATE ACTION REQUIRED* :warning:"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Max Δ-AUC:* {{ $value | humanizePercentage }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Threshold:* 10%"
+            },
+            {
+              "type": "mrkdwn", 
+              "text": "*Environment:* {{ $labels.environment }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Impact:* HIGH"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Compliance Risk:* REGULATORY"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Started:* {{ .StartsAt | humanizeDate }}"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Bias Details:* The model is showing unacceptable performance disparities across demographic groups, violating fairness thresholds."
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*🚨 CRITICAL ACTIONS:*\n• :stop_sign: STOP all new model deployments\n• :mag: Investigate group-specific disparities\n• :rewind: Review recent training data changes\n• :gear: Initiate debiasing procedures\n• :loudspeaker: Notify ethics committee"
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📊 Fairness Dashboard"
+              },
+              "style": "primary",
+              "url": "https://grafana.paranoidmodels.com/d/fairness-dashboard"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text", 
+                "text": "📖 Bias Runbook"
+              },
+              "url": "https://docs.paranoidmodels.com/runbooks/bias-violation"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "🛑 Block Deployments"
+              },
+              "style": "danger",
+              "url": "https://ci.paranoidmodels.com/block-deployments"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "⚖️ Ethics Alert | Alert ID: paranoid-bias-violation | <@ethics-lead> <@chief-ethics-officer>"
+            }
+          ]
+        }
+      ]
+    },
+    "quality_gates_failed": {
+      "channel": "#ml-ops-alerts", 
+      "username": "Quality Guardian",
+      "icon_emoji": ":traffic_light:",
+      "blocks": [
+        {
+          "type": "header",
+          "text": {
+            "type": "plain_text",
+            "text": "🚦 CRITICAL: Quality Gates Failed"
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":no_entry: *ALL DEPLOYMENTS BLOCKED* :no_entry:"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Environment:* {{ $labels.environment }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Status:* DEPLOYMENT BLOCKED"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Started:* {{ .StartsAt | humanizeDate }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Impact:* Production deployment halted"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Issue:* Production quality gates have failed validation. The system has automatically blocked all deployments until issues are resolved."
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Investigation Steps:*\n• :mag: Check `artifacts/metrics.json` for specific failures\n• :rewind: Review recent code and data changes\n• :test_tube: Validate test environment reproduction\n• :thinking_face: Consider staging rollback if needed"
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📊 Pipeline Dashboard"
+              },
+              "style": "primary",
+              "url": "https://ci.paranoidmodels.com/paranoid-pipeline"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📖 Quality Gates Guide"
+              },
+              "url": "https://docs.paranoidmodels.com/runbooks/quality-gates-fail"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "⚠️ Force Deploy"
+              },
+              "style": "danger",
+              "url": "https://ci.paranoidmodels.com/force-deploy"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "🚦 Quality Alert | Alert ID: paranoid-quality-gates-failed | <@ml-ops-oncall>"
+            }
+          ]
+        }
+      ]
+    },
+    "concept_drift_critical": {
+      "channel": "#ml-ops-alerts",
+      "username": "Drift Detector",
+      "icon_emoji": ":ocean:",
+      "blocks": [
+        {
+          "type": "header", 
+          "text": {
+            "type": "plain_text",
+            "text": "🌊 CRITICAL: Concept Drift Detected"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Critical Alerts:* {{ $value }}"
+            },
+            {
+              "type": "mrkdwn", 
+              "text": "*Environment:* {{ $labels.environment }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Started:* {{ .StartsAt | humanizeDate }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Impact:* Model performance may be compromised"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Concept Drift:* The model is detecting significant changes in data patterns that may indicate degraded performance or invalid assumptions."
+          }
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Immediate Assessment:*\n• :mag: Assess drift severity and scope\n• :electric_plug: Check for data source changes\n• :chart_with_downwards_trend: Evaluate performance impact\n• :rewind: Consider emergency rollback"
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📊 Drift Dashboard"
+              },
+              "style": "primary",
+              "url": "https://grafana.paranoidmodels.com/d/drift-dashboard"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📖 Drift Runbook"
+              },
+              "url": "https://docs.paranoidmodels.com/runbooks/concept-drift"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "🔄 Emergency Rollback"
+              },
+              "style": "danger", 
+              "url": "https://ci.paranoidmodels.com/emergency-rollback"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "🌊 Drift Alert | Alert ID: paranoid-concept-drift | <@ml-ops-oncall>"
+            }
+          ]
+        }
+      ]
+    },
+    "signal_spike": {
+      "channel": "#intelligence-alerts",
+      "username": "Signal Intelligence",
+      "icon_emoji": ":satellite:",
+      "blocks": [
+        {
+          "type": "header",
+          "text": {
+            "type": "plain_text",
+            "text": "📡 HIGH: Signal Spike Detected"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Signal Rate:* {{ $value | humanize }}/min"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Severity:* High"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Environment:* {{ $labels.environment }}"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Pattern:* Elevated activity"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Intelligence Alert:* Elevated rate of high-severity paranoid signals detected. This may indicate increased threat activity or environmental changes."
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "📊 Intelligence Dashboard"
+              },
+              "style": "primary",
+              "url": "https://grafana.paranoidmodels.com/d/intelligence-dashboard"
+            },
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "🕵️ HUMINT Analysis"
+              },
+              "url": "https://intelligence.paranoidmodels.com/humint"
+            }
+          ]
+        }
+      ]
+    },
+    "system_healthy": {
+      "channel": "#ml-ops-general",
+      "username": "Health Monitor",
+      "icon_emoji": ":white_check_mark:",
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":white_check_mark: *System Health: All Clear* :white_check_mark:\n\nParanoid Model V5 is operating normally. All quality gates passed, no drift detected, and performance within acceptable thresholds."
+          }
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "🤖 Paranoid Model V5 | Daily Health Report | {{ .StartsAt | humanizeDate }}"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "notification_policies": {
+    "critical_alerts": {
+      "channels": ["#ml-ops-alerts", "#leadership-alerts"],
+      "mentions": ["@ml-ops-oncall", "@here"],
+      "thread_replies": true,
+      "rich_formatting": true
+    },
+    "warning_alerts": {
+      "channels": ["#ml-ops-alerts"],
+      "mentions": ["@ml-ops-oncall"],
+      "thread_replies": false,
+      "rich_formatting": true
+    },
+    "info_alerts": {
+      "channels": ["#ml-ops-general"],
+      "mentions": [],
+      "thread_replies": false,
+      "rich_formatting": false
+    }
+  },
+  "escalation_config": {
+    "auto_escalate_after_minutes": 30,
+    "escalation_channels": {
+      "level_1": ["#ml-ops-alerts"],
+      "level_2": ["#leadership-alerts", "#cto-alerts"],
+      "level_3": ["#executive-alerts", "#board-alerts"]
+    },
+    "escalation_mentions": {
+      "level_1": ["@ml-ops-oncall"],
+      "level_2": ["@ml-lead", "@cto"],
+      "level_3": ["@ceo", "@board"]
+    }
+  }
+}

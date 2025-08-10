@@ -1,0 +1,330 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paranoid Newswire Test Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #f8fafc; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .header .meta { opacity: 0.8; }
+        
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .summary-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .summary-card h3 { color: #64748b; font-size: 0.875rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .summary-card .value { font-size: 2rem; font-weight: bold; }
+        .passed { color: #16a34a; }
+        .failed { color: #dc2626; }
+        .warnings { color: #d97706; }
+        
+        .test-section { background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .test-item { border-bottom: 1px solid #e2e8f0; padding: 1rem 0; }
+        .test-item:last-child { border-bottom: none; }
+        .test-header { display: flex; justify-content: between; align-items: center; margin-bottom: 1rem; }
+        .test-name { font-size: 1.125rem; font-weight: 600; }
+        .test-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; }
+        .status-passed { background: #dcfce7; color: #166534; }
+        .status-failed { background: #fecaca; color: #991b1b; }
+        .test-duration { color: #64748b; font-size: 0.875rem; }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .metric { background: #f8fafc; padding: 1rem; border-radius: 6px; }
+        .metric-label { color: #64748b; font-size: 0.875rem; }
+        .metric-value { font-weight: 600; }
+        
+        .warnings-list { margin: 1rem 0; }
+        .warning-item { background: #fef3c7; color: #92400e; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b; }
+        
+        .error-details { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+        .error-message { color: #991b1b; font-weight: 600; margin-bottom: 0.5rem; }
+        .error-stack { color: #dc2626; font-family: monospace; font-size: 0.875rem; white-space: pre-wrap; }
+        
+        .screenshots-section { margin-top: 2rem; }
+        .screenshots-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+        .screenshot-item { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .screenshot-item img { width: 100%; height: auto; display: block; }
+        .screenshot-meta { padding: 1rem; }
+        .screenshot-name { font-weight: 600; margin-bottom: 0.25rem; }
+        .screenshot-time { color: #64748b; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Paranoid Newswire Test Report</h1>
+            <div class="meta">
+                <div>URL: http://localhost:5175</div>
+                <div>Generated: 8/11/2025, 2:00:58 AM</div>
+                <div>Duration: 3070ms</div>
+            </div>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Total Tests</h3>
+                <div class="value">6</div>
+            </div>
+            <div class="summary-card">
+                <h3>Passed</h3>
+                <div class="value passed">4</div>
+            </div>
+            <div class="summary-card">
+                <h3>Failed</h3>
+                <div class="value failed">2</div>
+            </div>
+            <div class="summary-card">
+                <h3>Warnings</h3>
+                <div class="value warnings">3</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Results</h2>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">Health Check</div>
+                        <div>
+                            <span class="test-status status-failed">FAILED</span>
+                            <span class="test-duration">1136ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="error-details">
+                            <div class="error-message">❌ Health check failed: 500</div>
+                            <div class="error-stack">Error: Health check failed: 500
+    at /Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:130:17
+    at async PlaywrightReportGenerator.runTest (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:79:22)
+    at async PlaywrightReportGenerator.runFullSuite (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:126:7)</div>
+                        </div>
+                    
+                </div>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">UI Load Performance</div>
+                        <div>
+                            <span class="test-status status-failed">FAILED</span>
+                            <span class="test-duration">173ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="error-details">
+                            <div class="error-message">❌ page.waitForTimeout is not a function</div>
+                            <div class="error-stack">TypeError: page.waitForTimeout is not a function
+    at /Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:160:20
+    at async PlaywrightReportGenerator.runTest (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:79:22)
+    at async PlaywrightReportGenerator.runFullSuite (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:145:7)</div>
+                        </div>
+                    
+                </div>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">Hero Section Validation</div>
+                        <div>
+                            <span class="test-status status-passed">PASSED</span>
+                            <span class="test-duration">194ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                        <div class="metrics-grid">
+                            
+                                <div class="metric">
+                                    <div class="metric-label">hero text length</div>
+                                    <div class="metric-value">884</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">has keywords</div>
+                                    <div class="metric-value">false</div>
+                                </div>
+                            
+                        </div>
+                    
+                    
+                    
+                        <div class="warnings-list">
+                            
+                                <div class="warning-item">⚠️ Hero section missing key paranoid/intelligence keywords</div>
+                            
+                        </div>
+                    
+                    
+                    
+                </div>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">News Cards Validation</div>
+                        <div>
+                            <span class="test-status status-passed">PASSED</span>
+                            <span class="test-duration">491ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                        <div class="metrics-grid">
+                            
+                                <div class="metric">
+                                    <div class="metric-label">total cards</div>
+                                    <div class="metric-value">10</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">cards with why it matters</div>
+                                    <div class="metric-value">6</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">why it matters coverage</div>
+                                    <div class="metric-value">60</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">unique titles</div>
+                                    <div class="metric-value">10</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">uniqueness ratio</div>
+                                    <div class="metric-value">100</div>
+                                </div>
+                            
+                        </div>
+                    
+                    
+                    
+                        <div class="warnings-list">
+                            
+                                <div class="warning-item">⚠️ Low why_it_matters coverage: 60%</div>
+                            
+                        </div>
+                    
+                    
+                    
+                </div>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">Data Source Validation</div>
+                        <div>
+                            <span class="test-status status-passed">PASSED</span>
+                            <span class="test-duration">1067ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                        <div class="metrics-grid">
+                            
+                                <div class="metric">
+                                    <div class="metric-label">data source accessible</div>
+                                    <div class="metric-value">false</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">enriched items</div>
+                                    <div class="metric-value">0</div>
+                                </div>
+                            
+                        </div>
+                    
+                    
+                    
+                        <div class="warnings-list">
+                            
+                                <div class="warning-item">⚠️ Enriched data source not accessible</div>
+                            
+                        </div>
+                    
+                    
+                    
+                </div>
+            
+                <div class="test-item">
+                    <div class="test-header">
+                        <div class="test-name">Performance Metrics</div>
+                        <div>
+                            <span class="test-status status-passed">PASSED</span>
+                            <span class="test-duration">8ms</span>
+                        </div>
+                    </div>
+                    
+                    
+                        <div class="metrics-grid">
+                            
+                                <div class="metric">
+                                    <div class="metric-label">js heap used mb</div>
+                                    <div class="metric-value">1</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">dom nodes</div>
+                                    <div class="metric-value">237</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">dom content loaded ms</div>
+                                    <div class="metric-value">2</div>
+                                </div>
+                            
+                                <div class="metric">
+                                    <div class="metric-label">load complete ms</div>
+                                    <div class="metric-value">0</div>
+                                </div>
+                            
+                        </div>
+                    
+                    
+                    
+                    
+                    
+                </div>
+            
+        </div>
+        
+        
+            <div class="screenshots-section">
+                <div class="test-section">
+                    <h2>Screenshots</h2>
+                    <div class="screenshots-grid">
+                        
+                            <div class="screenshot-item">
+                                <img src="screenshots/hero-section-1754866860748.png" alt="hero-section" />
+                                <div class="screenshot-meta">
+                                    <div class="screenshot-name">hero-section</div>
+                                    <div class="screenshot-time">8/11/2025, 2:01:00 AM</div>
+                                </div>
+                            </div>
+                        
+                            <div class="screenshot-item">
+                                <img src="screenshots/news-cards-grid-1754866860851.png" alt="news-cards-grid" />
+                                <div class="screenshot-meta">
+                                    <div class="screenshot-name">news-cards-grid</div>
+                                    <div class="screenshot-time">8/11/2025, 2:01:01 AM</div>
+                                </div>
+                            </div>
+                        
+                    </div>
+                </div>
+            </div>
+        
+    </div>
+</body>
+</html>
+    

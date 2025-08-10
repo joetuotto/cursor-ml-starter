@@ -1,0 +1,234 @@
+{
+  "pagerduty": {
+    "global": {
+      "severity_mapping": {
+        "critical": "critical",
+        "warning": "warning", 
+        "info": "info"
+      },
+      "routing_key": "${PAGERDUTY_INTEGRATION_KEY}",
+      "client": "Paranoid Model V5",
+      "client_url": "https://grafana.paranoidmodels.com"
+    },
+    "escalation_policies": [
+      {
+        "name": "ML-Ops Critical",
+        "integration_key": "${PAGERDUTY_ML_OPS_KEY}",
+        "escalation_rules": [
+          {
+            "escalation_delay_in_minutes": 0,
+            "targets": [
+              {
+                "type": "user",
+                "id": "${PAGERDUTY_ML_OPS_USER_ID}"
+              },
+              {
+                "type": "schedule",
+                "id": "${PAGERDUTY_ML_OPS_SCHEDULE_ID}"
+              }
+            ]
+          },
+          {
+            "escalation_delay_in_minutes": 15,
+            "targets": [
+              {
+                "type": "user", 
+                "id": "${PAGERDUTY_ML_LEAD_USER_ID}"
+              }
+            ]
+          },
+          {
+            "escalation_delay_in_minutes": 30,
+            "targets": [
+              {
+                "type": "user",
+                "id": "${PAGERDUTY_CTO_USER_ID}"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ML-Ethics",
+        "integration_key": "${PAGERDUTY_ML_ETHICS_KEY}",
+        "escalation_rules": [
+          {
+            "escalation_delay_in_minutes": 0,
+            "targets": [
+              {
+                "type": "user",
+                "id": "${PAGERDUTY_ETHICS_LEAD_USER_ID}"
+              }
+            ]
+          },
+          {
+            "escalation_delay_in_minutes": 20,
+            "targets": [
+              {
+                "type": "user",
+                "id": "${PAGERDUTY_CHIEF_ETHICS_USER_ID}"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "Paranoid Model Performance",
+        "integration_key": "${PAGERDUTY_ML_OPS_KEY}",
+        "alert_grouping": "time",
+        "alert_grouping_timeout": 300,
+        "escalation_policy": "ML-Ops Critical",
+        "incident_urgency_rule": {
+          "type": "use_support_hours",
+          "during_support_hours": {
+            "type": "constant",
+            "urgency": "high"
+          },
+          "outside_support_hours": {
+            "type": "constant", 
+            "urgency": "low"
+          }
+        },
+        "support_hours": {
+          "type": "fixed_time_per_day",
+          "time_zone": "UTC",
+          "start_time": "08:00:00",
+          "end_time": "18:00:00",
+          "days_of_week": [1, 2, 3, 4, 5]
+        }
+      },
+      {
+        "name": "Paranoid Model Fairness",
+        "integration_key": "${PAGERDUTY_ML_ETHICS_KEY}",
+        "alert_grouping": "intelligent",
+        "escalation_policy": "ML-Ethics",
+        "incident_urgency_rule": {
+          "type": "constant",
+          "urgency": "high"
+        }
+      }
+    ],
+    "alert_templates": {
+      "auc_drop_critical": {
+        "event_action": "trigger",
+        "routing_key": "${PAGERDUTY_ML_OPS_KEY}",
+        "dedup_key": "paranoid-auc-drop-{{ $labels.target }}",
+        "payload": {
+          "summary": "🚨 CRITICAL: AUC Drop for {{ $labels.target }}",
+          "source": "Paranoid Model V5",
+          "severity": "critical",
+          "component": "model-performance",
+          "group": "ml-ops",
+          "class": "performance-degradation",
+          "custom_details": {
+            "target": "{{ $labels.target }}",
+            "current_auc": "{{ $value | humanizePercentage }}",
+            "threshold": "80%",
+            "environment": "{{ $labels.environment }}",
+            "runbook_url": "https://docs.paranoidmodels.com/runbooks/auc-drop",
+            "grafana_url": "https://grafana.paranoidmodels.com/d/paranoid-dashboard",
+            "prometheus_query": "paranoid_auc{target=\"{{ $labels.target }}\"}",
+            "recommended_actions": [
+              "1. Check data quality and recent changes",
+              "2. Investigate concept drift indicators",
+              "3. Consider emergency rollback if AUC < 75%",
+              "4. Schedule model retraining"
+            ]
+          }
+        }
+      },
+      "bias_violation": {
+        "event_action": "trigger",
+        "routing_key": "${PAGERDUTY_ML_ETHICS_KEY}",
+        "dedup_key": "paranoid-bias-violation",
+        "payload": {
+          "summary": "⚖️ CRITICAL: Model Bias Violation Detected",
+          "source": "Paranoid Model V5", 
+          "severity": "critical",
+          "component": "fairness",
+          "group": "ml-ethics",
+          "class": "bias-violation",
+          "custom_details": {
+            "max_delta_auc": "{{ $value | humanizePercentage }}",
+            "threshold": "10%",
+            "environment": "{{ $labels.environment }}",
+            "runbook_url": "https://docs.paranoidmodels.com/runbooks/bias-violation",
+            "ethics_dashboard": "https://grafana.paranoidmodels.com/d/fairness-dashboard",
+            "immediate_actions": [
+              "1. STOP all new model deployments immediately",
+              "2. Investigate group-specific performance disparities", 
+              "3. Review recent training data for bias introduction",
+              "4. Initiate debiasing procedures",
+              "5. Notify ethics committee and stakeholders"
+            ],
+            "compliance_impact": "High - potential regulatory and reputational risk"
+          }
+        }
+      },
+      "quality_gates_failed": {
+        "event_action": "trigger",
+        "routing_key": "${PAGERDUTY_ML_OPS_KEY}",
+        "dedup_key": "paranoid-quality-gates-failed",
+        "payload": {
+          "summary": "🚦 CRITICAL: Production Quality Gates Failed",
+          "source": "Paranoid Model V5",
+          "severity": "critical",
+          "component": "quality-gates",
+          "group": "ml-ops",
+          "class": "deployment-blocker",
+          "custom_details": {
+            "environment": "{{ $labels.environment }}",
+            "deployment_status": "BLOCKED",
+            "runbook_url": "https://docs.paranoidmodels.com/runbooks/quality-gates-fail",
+            "pipeline_url": "https://ci.paranoidmodels.com/paranoid-pipeline",
+            "blocking_actions": [
+              "1. ALL deployments are automatically blocked",
+              "2. Investigate specific gate failures",
+              "3. Fix underlying issues before retry",
+              "4. Manual approval required for force deployment"
+            ],
+            "investigation_steps": [
+              "Check artifacts/metrics.json for specific failures",
+              "Review recent code and data changes",
+              "Validate test environment reproduction",
+              "Consider staging rollback if needed"
+            ]
+          }
+        }
+      },
+      "concept_drift_critical": {
+        "event_action": "trigger",
+        "routing_key": "${PAGERDUTY_ML_OPS_KEY}",
+        "dedup_key": "paranoid-concept-drift",
+        "payload": {
+          "summary": "🌊 CRITICAL: Concept Drift Detected",
+          "source": "Paranoid Model V5",
+          "severity": "critical",
+          "component": "drift-detection",
+          "group": "ml-ops", 
+          "class": "model-degradation",
+          "custom_details": {
+            "critical_alerts": "{{ $value }}",
+            "environment": "{{ $labels.environment }}",
+            "runbook_url": "https://docs.paranoidmodels.com/runbooks/concept-drift",
+            "drift_dashboard": "https://grafana.paranoidmodels.com/d/drift-dashboard",
+            "immediate_assessment": [
+              "1. Assess drift severity and scope",
+              "2. Check for data source changes or outages",
+              "3. Evaluate model performance impact",
+              "4. Consider emergency rollback to stable version"
+            ],
+            "medium_term_actions": [
+              "1. Plan accelerated model retraining",
+              "2. Investigate root cause of drift",
+              "3. Update drift detection thresholds if needed",
+              "4. Communicate impact to stakeholders"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

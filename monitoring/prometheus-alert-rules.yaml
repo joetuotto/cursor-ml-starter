@@ -1,0 +1,325 @@
+groups:
+  - name: paranoid-model-alerts
+    rules:
+      # ===== CRITICAL MODEL PERFORMANCE ALERTS =====
+      
+      - alert: ParanoidAUCDropCritical
+        expr: paranoid_auc < 0.80
+        for: 5m
+        labels:
+          severity: critical
+          component: model-performance
+          team: ml-ops
+        annotations:
+          summary: "🚨 Critical AUC drop detected for {{ $labels.target }}"
+          description: "AUC for {{ $labels.target }} has dropped to {{ $value | humanizePercentage }} (threshold: 80%). Immediate investigation required."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/auc-drop"
+          action: "1. Check data quality 2. Investigate drift 3. Consider rollback"
+
+      - alert: ParanoidAUCDropWarning
+        expr: paranoid_auc < 0.86 and paranoid_auc >= 0.80
+        for: 10m
+        labels:
+          severity: warning
+          component: model-performance
+          team: ml-ops
+        annotations:
+          summary: "⚠️ AUC degradation for {{ $labels.target }}"
+          description: "AUC for {{ $labels.target }} is {{ $value | humanizePercentage }} (threshold: 86%). Monitor closely."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/auc-degradation"
+
+      # ===== FAIRNESS & BIAS ALERTS =====
+      
+      - alert: ParanoidBiasViolation
+        expr: paranoid_fairness_max_delta_auc > 0.10
+        for: 2m
+        labels:
+          severity: critical
+          component: fairness
+          team: ml-ethics
+        annotations:
+          summary: "🚨 Bias violation detected"
+          description: "Max Delta-AUC across groups is {{ $value | humanizePercentage }} (threshold: 10%). Fairness compromised."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/bias-violation"
+          action: "1. Stop new deployments 2. Investigate group disparities 3. Retrain with debiasing"
+
+      - alert: ParanoidGroupAUCImbalance
+        expr: max(paranoid_group_auc) - min(paranoid_group_auc) > 0.15
+        for: 5m
+        labels:
+          severity: warning
+          component: fairness
+          team: ml-ethics
+        annotations:
+          summary: "⚠️ Significant AUC imbalance between groups"
+          description: "AUC difference between groups is {{ $value | humanizePercentage }} (threshold: 15%)"
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/group-imbalance"
+
+      # ===== CALIBRATION ALERTS =====
+      
+      - alert: ParanoidCalibrationDrift
+        expr: paranoid_calibration_ece > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          component: calibration
+          team: ml-ops
+        annotations:
+          summary: "📊 Model calibration drift detected"
+          description: "Expected Calibration Error is {{ $value | humanizePercentage }} (threshold: 5%). Recalibration needed."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/calibration-drift"
+          action: "1. Check recent data changes 2. Run isotonic recalibration 3. Validate improvement"
+
+      - alert: ParanoidBrierScoreHigh
+        expr: paranoid_brier_score > 0.25
+        for: 5m
+        labels:
+          severity: warning
+          component: calibration
+          team: ml-ops
+        annotations:
+          summary: "📈 High Brier Score detected"
+          description: "Brier Score is {{ $value }} (threshold: 0.25). Probability estimates may be poorly calibrated."
+
+      # ===== QUALITY GATES ALERTS =====
+      
+      - alert: ParanoidQualityGatesFailed
+        expr: paranoid_quality_gates_passed == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: quality-gates
+          team: ml-ops
+        annotations:
+          summary: "🚦 Quality gates FAILED"
+          description: "Production quality gates have failed. Deployment should be blocked."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/quality-gates-fail"
+          action: "1. Block deployments 2. Investigate gate failures 3. Fix issues before retry"
+
+      - alert: ParanoidQualityGateStuck
+        expr: changes(paranoid_quality_gates_passed[1h]) == 0 and paranoid_quality_gates_passed == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: quality-gates
+          team: ml-ops
+        annotations:
+          summary: "🔒 Quality gates stuck in FAILED state"
+          description: "Quality gates have been failing for over 30 minutes. Manual intervention may be needed."
+
+      # ===== CONCEPT DRIFT ALERTS =====
+      
+      - alert: ParanoidDriftCritical
+        expr: paranoid_drift_alerts_critical > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: drift-detection
+          team: ml-ops
+        annotations:
+          summary: "🌊 Critical concept drift detected"
+          description: "{{ $value }} critical drift alerts active. Model performance may be compromised."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/concept-drift"
+          action: "1. Assess drift severity 2. Consider emergency rollback 3. Plan model retraining"
+
+      - alert: ParanoidDriftTrend
+        expr: increase(paranoid_drift_alerts_total[6h]) > 5
+        for: 0m
+        labels:
+          severity: warning
+          component: drift-detection
+          team: ml-ops
+        annotations:
+          summary: "📈 Increasing drift alert trend"
+          description: "{{ $value }} drift alerts in the last 6 hours. Monitor for degradation."
+
+      # ===== SIGNAL DETECTION ALERTS =====
+      
+      - alert: ParanoidHighSeveritySignalSpike
+        expr: rate(paranoid_latest_signal_severity == 3)[5m] > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: signal-detection
+          team: intelligence
+        annotations:
+          summary: "🚨 High severity signal spike"
+          description: "Elevated rate of high-severity signals: {{ $value | humanize }}/min"
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/signal-spike"
+
+      - alert: ParanoidSignalConfidenceLow
+        expr: paranoid_latest_signal_confidence < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: signal-detection
+          team: intelligence
+        annotations:
+          summary: "📉 Low signal confidence"
+          description: "Signal confidence is {{ $value | humanizePercentage }} (threshold: 50%). Review detection logic."
+
+      # ===== HUMINT ANALYSIS ALERTS =====
+      
+      - alert: ParanoidHumintNetworkSpike
+        expr: paranoid_humint_networks_detected > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: humint
+          team: intelligence
+        annotations:
+          summary: "🕵️ Unusual actor network activity"
+          description: "{{ $value }} active networks detected (normal: <10). Investigate coordination patterns."
+
+      - alert: ParanoidHumintHighConfidenceHypothesis
+        expr: paranoid_humint_highest_confidence > 0.9
+        for: 0m
+        labels:
+          severity: info
+          component: humint
+          team: intelligence
+        annotations:
+          summary: "🎯 High confidence motive hypothesis"
+          description: "New hypothesis with {{ $value | humanizePercentage }} confidence. Review for actionable intelligence."
+
+      # ===== OPERATIONAL ALERTS =====
+      
+      - alert: ParanoidPipelineStale
+        expr: time() - paranoid_pipeline_last_run_timestamp > 3600
+        for: 5m
+        labels:
+          severity: warning
+          component: pipeline
+          team: ops
+        annotations:
+          summary: "⏰ Pipeline hasn't run recently"
+          description: "Last pipeline run was {{ humanizeDuration (time() - $value) }} ago. Check cron job."
+          action: "1. Check cron schedule 2. Verify CI/CD status 3. Look for blocking errors"
+
+      - alert: ParanoidPipelineFailure
+        expr: paranoid_pipeline_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: pipeline
+          team: ops
+        annotations:
+          summary: "💥 Pipeline execution failed"
+          description: "Latest pipeline run failed. Check logs and artifacts."
+          runbook_url: "https://docs.paranoidmodels.com/runbooks/pipeline-failure"
+
+      - alert: ParanoidDeploymentStale
+        expr: time() - paranoid_deployment_timestamp > 86400
+        for: 10m
+        labels:
+          severity: info
+          component: deployment
+          team: ops
+        annotations:
+          summary: "📅 No recent deployments"
+          description: "Last deployment was {{ humanizeDuration (time() - $value) }} ago."
+
+      # ===== DATA PIPELINE ALERTS =====
+      
+      - alert: ParanoidGDELTDataLow
+        expr: paranoid_gdelt_range_days < 30
+        for: 5m
+        labels:
+          severity: warning
+          component: data-pipeline
+          team: data-ops
+        annotations:
+          summary: "📊 Insufficient GDELT data range"
+          description: "GDELT data range is only {{ $value }} days (recommended: 90+)"
+
+      - alert: ParanoidDataPipelineStuck
+        expr: changes(paranoid_gdelt_range_days[2h]) == 0
+        for: 1h
+        labels:
+          severity: warning
+          component: data-pipeline
+          team: data-ops
+        annotations:
+          summary: "🔄 Data pipeline appears stuck"
+          description: "No changes in data metrics for 2+ hours. Check data acquisition."
+
+  # ===== AGGREGATE HEALTH RULES =====
+  
+  - name: paranoid-health-aggregate
+    rules:
+      - alert: ParanoidSystemUnhealthy
+        expr: |
+          (paranoid_quality_gates_passed == 0) or
+          (paranoid_auc < 0.80) or
+          (paranoid_fairness_max_delta_auc > 0.15) or
+          (paranoid_drift_alerts_critical > 2)
+        for: 5m
+        labels:
+          severity: critical
+          component: system-health
+          team: ml-ops
+        annotations:
+          summary: "🚨 PARANOID SYSTEM UNHEALTHY"
+          description: "Multiple critical issues detected. System may be compromised."
+          action: "1. STOP ALL DEPLOYMENTS 2. Investigate root cause 3. Consider emergency rollback"
+
+      - alert: ParanoidSystemDegraded
+        expr: |
+          (paranoid_auc < 0.86) or
+          (paranoid_calibration_ece > 0.05) or
+          (paranoid_drift_alerts_total > 3) or
+          (rate(paranoid_latest_signal_severity == 3)[10m] > 0.05)
+        for: 10m
+        labels:
+          severity: warning
+          component: system-health
+          team: ml-ops
+        annotations:
+          summary: "⚠️ System performance degraded"
+          description: "System showing signs of degradation. Monitor closely."
+
+  # ===== RECORDING RULES FOR DASHBOARDS =====
+  
+  - name: paranoid-recording-rules
+    interval: 30s
+    rules:
+      - record: paranoid:auc_avg_5m
+        expr: avg_over_time(paranoid_auc[5m])
+        labels:
+          metric_type: "performance"
+
+      - record: paranoid:auc_trend_1h
+        expr: rate(paranoid_auc[1h])
+        labels:
+          metric_type: "performance"
+
+      - record: paranoid:fairness_violation_rate
+        expr: rate(paranoid_fairness_max_delta_auc > 0.10)[5m]
+        labels:
+          metric_type: "fairness"
+
+      - record: paranoid:drift_alert_rate_6h
+        expr: rate(paranoid_drift_alerts_total[6h])
+        labels:
+          metric_type: "drift"
+
+      - record: paranoid:signal_severity_distribution
+        expr: |
+          (
+            sum(rate(paranoid_latest_signal_severity == 1)[5m]) +
+            sum(rate(paranoid_latest_signal_severity == 2)[5m]) * 2 +
+            sum(rate(paranoid_latest_signal_severity == 3)[5m]) * 3
+          ) / sum(rate(paranoid_latest_signal_severity)[5m])
+        labels:
+          metric_type: "signals"
+
+      - record: paranoid:system_health_score
+        expr: |
+          (
+            (paranoid_quality_gates_passed * 25) +
+            (clamp_max(paranoid_auc * 100, 25)) +
+            (clamp_max((1 - paranoid_fairness_max_delta_auc) * 25, 25)) +
+            (clamp_max((1 - paranoid_calibration_ece) * 25, 25))
+          ) / 100
+        labels:
+          metric_type: "health"

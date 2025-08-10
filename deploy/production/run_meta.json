@@ -1,0 +1,50 @@
+{
+  "deployment": {
+    "timestamp": "2025-08-10T23-01-30.904270+00-00",
+    "deployer": "ottojuote",
+    "environment": "production",
+    "version": "latest",
+    "commit_hash": "dc3aee6e0b9b59c1a656376eb1abc4661d505936",
+    "provider": "local"
+  },
+  "data_sources": {
+    "wgi_snapshot_date": "unknown",
+    "gdelt_range_days": 90,
+    "gdelt_min_events": 200000,
+    "data_version": "unknown"
+  },
+  "artifacts": {
+    "metrics.json": {
+      "size_bytes": 1600,
+      "sha256": "d9fef8df4d7d31242ceab9248564746cc4b34f42e7a2eb93f7a91ff4ae7d7e50",
+      "modified": "2025-08-11T01:39:05.541154"
+    },
+    "signal.raw.json": {
+      "size_bytes": 510,
+      "sha256": "2895ec5e36d52bd2dfe751615d18b310de1285afb02a3c36f8d37b7b40df4f5c",
+      "modified": "2025-08-11T01:44:37.000570"
+    },
+    "report.enriched.json": {
+      "size_bytes": 5484,
+      "sha256": "57c38f81e7ca0d6d81902620259828ef0985b6aec245ebd37037a60b8201f678",
+      "modified": "2025-08-11T00:38:36.702669"
+    },
+    "paranoid_models.joblib": {
+      "size_bytes": 21286,
+      "sha256": "862a0201da92b7646bfea867a1ea784d4baea1959eaf6427ce5048a824c2470a",
+      "modified": "2025-08-11T01:39:05.544942"
+    }
+  },
+  "quality_gates": {
+    "auc_minimum": false,
+    "fairness_check": false,
+    "calibration_check": false,
+    "overall_status": "FAIL"
+  },
+  "governance": {
+    "pii_compliance": "actor_fields_only",
+    "bias_monitoring": "enabled",
+    "audit_trail": true,
+    "retention_days": 90
+  }
+}

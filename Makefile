@@ -1,3 +1,290 @@
+# ===== PARANOID MODEL V5 =====
+.PHONY: paranoid-setup paranoid-train paranoid-signal paranoid-enrich paranoid-pipeline
+
+paranoid-setup:
+	@echo "🔧 Setting up paranoid model v5..."
+	mkdir -p data artifacts config scripts
+	python3 scripts/generate_mock.py --out data/paranoid_mock.csv --n 500
+
+paranoid-train:
+	@echo "🎯 Training paranoid model v5..."
+	python3 scripts/train_paranoid.py \
+		--config config/paranoid_v5.yaml \
+		--data data/paranoid.csv --fallback data/paranoid_mock.csv \
+		--outdir artifacts
+
+paranoid-gates:
+	@echo "🚦 Checking quality gates..."
+	python3 scripts/quality_gates.py --metrics artifacts/metrics.json --config config/paranoid_v5.yaml
+
+paranoid-signal:
+	@echo "🚨 Generating paranoid signal..."
+	python3 scripts/generate_paranoid_signal.py \
+		--models artifacts/paranoid_models.joblib \
+		--out artifacts/signal.raw.json \
+		--n 100
+
+paranoid-enrich:
+	@echo "🤖 Enriching signal with Cursor GPT-5..."
+	python -m src.cli enrich \
+		--signal artifacts/signal.raw.json \
+		--schema artifacts/feed_item_schema.json \
+		--out artifacts/report.enriched.json
+
+paranoid-pipeline: paranoid-setup paranoid-train paranoid-gates paranoid-signal paranoid-enrich
+	@echo "✅ Full paranoid pipeline completed!"
+	@echo "📊 Check artifacts/ for results"
+
+paranoid-data:
+	@echo "🌍 Fetching WGI and GDELT data..."
+	python3 scripts/merge_wgi_gdelt.py \
+		--download \
+		--max_gdelt_files 5 \
+		--out data/paranoid.csv
+
+paranoid-data-existing:
+	@echo "📁 Processing existing WGI/GDELT data..."
+	python3 scripts/merge_wgi_gdelt.py \
+		--wgi_dir data/raw/wgi \
+		--gdelt_dir data/raw/gdelt \
+		--out data/paranoid.csv
+
+paranoid-full: paranoid-data paranoid-train paranoid-gates paranoid-signal paranoid-enrich
+	@echo "🎉 COMPLETE PARANOID PIPELINE FINISHED!"
+	@echo "📊 Results in artifacts/"
+	@echo "📰 Enriched newswire: artifacts/report.enriched.json"
+	@echo "🚨 Signal detected: artifacts/signal.raw.json"
+	@echo "🤖 Models saved: artifacts/paranoid_models.joblib"
+
+paranoid-full-mock: paranoid-setup paranoid-train paranoid-gates paranoid-signal
+	@echo "🎉 PARANOID PIPELINE (MOCK DATA) FINISHED!"
+	@echo "📊 Results in artifacts/ (using mock data)"
+	@echo "🚨 Signal detected: artifacts/signal.raw.json"  
+	@echo "💡 Run 'make paranoid-enrich' with CURSOR_API_KEY to complete"
+
+# ===== ENHANCED PARANOID OPERATIONS =====
+
+paranoid-humint:
+	@echo "🕵️ Generating HUMINT profile..."
+	python3 scripts/humint_profiler.py \
+		--data data/paranoid.csv \
+		--signal artifacts/signal.raw.json \
+		--out artifacts/humint_profile.json
+
+paranoid-drift:
+	@echo "📊 Checking for concept drift..."
+	python3 scripts/drift_detector.py \
+		--metrics_dir artifacts \
+		--out artifacts/drift_report.json
+
+paranoid-smoke:
+	@echo "🚨 Running paranoid smoke test..."
+	cd web && node tests/e2e/paranoid.smoke.cjs
+
+paranoid-debug:
+	@echo "🔧 Debug mode data acquisition..."
+	export PARANOID_DEBUG=true && \
+	python3 scripts/merge_wgi_gdelt.py \
+		--out data/paranoid_debug.csv \
+		--debug
+
+paranoid-temporal:
+	@echo "⏰ Training with temporal cross-validation..."
+	export PARANOID_TEMPORAL_CV=1 && \
+	make paranoid-train
+
+paranoid-complete: paranoid-full paranoid-humint paranoid-drift
+	@echo "🎉 COMPLETE PARANOID INTELLIGENCE PIPELINE!"
+	@echo "📊 Metrics: artifacts/metrics.json"
+	@echo "🚨 Signal: artifacts/signal.raw.json"
+	@echo "📰 Newswire: artifacts/report.enriched.json"
+	@echo "🕵️ HUMINT: artifacts/humint_profile.json"
+	@echo "📈 Drift: artifacts/drift_report.json"
+	@echo "🎯 All intelligence products ready!"
+
+# ===== ENTERPRISE DEPLOYMENT =====
+
+paranoid-deploy:
+	@echo "☁️ Deploying artifacts to cloud storage..."
+	python3 scripts/deploy_artifacts.py \
+		--provider auto \
+		--artifacts_dir artifacts
+
+paranoid-deploy-force:
+	@echo "☁️ Force deploying artifacts (bypass quality gates)..."
+	python3 scripts/deploy_artifacts.py \
+		--provider auto \
+		--artifacts_dir artifacts \
+		--force
+
+paranoid-rollback:
+	@echo "🔄 Rolling back to previous backup..."
+	python3 scripts/deploy_artifacts.py --rollback
+
+paranoid-report:
+	@echo "🎭 Generating comprehensive Playwright report..."
+	cd web && node tests/e2e/playwright.report.cjs
+
+paranoid-monitor:
+	@echo "📊 Setting up Grafana monitoring..."
+	@echo "📁 Import monitoring/grafana-paranoid-dashboard.json to Grafana"
+	@echo "🔗 Dashboard URL: http://localhost:3000/dashboard/import"
+
+paranoid-enterprise: paranoid-complete paranoid-deploy paranoid-report
+	@echo "🏢 ENTERPRISE PARANOID DEPLOYMENT COMPLETE!"
+	@echo "☁️ Artifacts deployed to cloud storage"
+	@echo "📄 HTML test reports generated" 
+	@echo "📊 Grafana dashboard ready for import"
+	@echo "🎯 Production intelligence pipeline operational!"
+
+# ===== PRODUCTION OPERATIONS =====
+
+paranoid-health-check:
+	@echo "🏥 Running production health check..."
+	@python3 -c "\
+import requests, json, sys; \
+try: \
+    r = requests.get('$(PROD_URL)/health', timeout=10); \
+    health = r.json(); \
+    print(f'✅ API Health: {health[\"status\"]}'); \
+    print(f'📊 Model: {health[\"model_version\"]}'); \
+    print(f'⏰ Uptime: {health[\"uptime_seconds\"]//3600}h'); \
+    sys.exit(0 if health['status'] == 'healthy' else 1); \
+except Exception as e: \
+    print(f'❌ Health check failed: {e}'); \
+    sys.exit(1) \
+"
+
+paranoid-production-check: paranoid-health-check paranoid-smoke paranoid-drift
+	@echo "✅ Production validation complete"
+
+# ===== PROMETHEUS & MONITORING =====
+
+paranoid-prometheus:
+	@echo "📊 Exporting metrics to Prometheus..."
+	python3 scripts/prometheus_exporter.py \
+		--artifacts_dir artifacts
+
+paranoid-prometheus-push:
+	@echo "📊 Pushing metrics to Prometheus Gateway..."
+	python3 scripts/prometheus_exporter.py \
+		--artifacts_dir artifacts \
+		--pushgateway_url $(PROMETHEUS_PUSHGATEWAY_URL)
+
+# ===== S3 LIFECYCLE MANAGEMENT =====
+
+setup-s3-lifecycle:
+	@echo "🗂️ Setting up S3 lifecycle policies..."
+	python3 scripts/setup_s3_lifecycle.py \
+		--bucket $(S3_BUCKET) \
+		--region $(AWS_REGION) \
+		--production-retention 365 \
+		--backup-retention 90
+
+setup-s3-costs:
+	@echo "💰 Estimating S3 storage costs..."
+	python3 scripts/setup_s3_lifecycle.py \
+		--bucket $(S3_BUCKET) \
+		--estimate-costs
+
+# ===== STAGING → PRODUCTION PROMOTION =====
+
+paranoid-staging-validate:
+	@echo "🚦 Validating staging for promotion..."
+	python3 scripts/staging_promote.py \
+		--staging-artifacts staging_artifacts \
+		--dry-run
+
+paranoid-promote:
+	@echo "🚀 Promoting staging to production..."
+	python3 scripts/staging_promote.py \
+		--staging-artifacts staging_artifacts
+
+paranoid-promote-force:
+	@echo "⚠️ FORCE promoting staging to production..."
+	python3 scripts/staging_promote.py \
+		--staging-artifacts staging_artifacts \
+		--force
+
+# ===== ULTIMATE ENTERPRISE PIPELINE =====
+
+paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
+	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
+	@echo "📊 Metrics exported to Prometheus"
+	@echo "☁️ Artifacts deployed with lifecycle management"
+	@echo "📄 Comprehensive reports generated"
+	@echo "🚀 Ready for global enterprise deployment!"
+
+# ===== SANITY CHECKS & VALIDATION =====
+
+paranoid-sanity:
+	@echo "✅ Running pre-deployment sanity checks..."
+	python3 scripts/sanity_check.py
+
+paranoid-setup-alerts:
+	@echo "🚨 Setting up Prometheus alerts..."
+	@echo "📁 Import monitoring/prometheus-alert-rules.yaml to Prometheus"
+	@echo "📁 Import monitoring/grafana-alerts-config.json to Grafana"
+	@echo "🔗 Prometheus: /etc/prometheus/rules/ or via API"
+	@echo "🔗 Grafana: /api/provisioning/alert-rules"
+
+paranoid-validate-alerts:
+	@echo "🧪 Testing alert configurations..."
+	@if [ -n "$(PROMETHEUS_URL)" ]; then \
+		curl -s "$(PROMETHEUS_URL)/api/v1/rules" | jq '.data.groups[] | select(.name=="paranoid-model-alerts") | .rules | length'; \
+	else \
+		echo "⚠️ Set PROMETHEUS_URL to validate alert rules"; \
+	fi
+
+paranoid-test-alerts:
+	@echo "🚨 Running alert fire tests..."
+	python3 scripts/test_alerts.py \
+		--pushgateway_url $(PROMETHEUS_PUSHGATEWAY_URL) \
+		--slack_webhook $(SLACK_WEBHOOK_URL) \
+		--test all \
+		--wait_time 30
+
+paranoid-test-alert-auc:
+	@echo "🚨 Testing AUC drop alert..."
+	python3 scripts/test_alerts.py \
+		--test auc \
+		--auc_value 0.75 \
+		--wait_time 60
+
+paranoid-test-alert-bias:
+	@echo "⚖️ Testing bias violation alert..."
+	python3 scripts/test_alerts.py \
+		--test bias \
+		--delta_auc 0.15 \
+		--wait_time 60
+
+paranoid-check-prometheus-rules:
+	@echo "📋 Checking Prometheus rules syntax..."
+	@if command -v promtool >/dev/null 2>&1; then \
+		promtool check rules monitoring/prometheus-alert-rules.yaml; \
+	else \
+		echo "⚠️ promtool not found - install Prometheus toolkit"; \
+	fi
+
+# ===== GO-LIVE SEQUENCE =====
+
+paranoid-go-live: paranoid-sanity setup-s3-lifecycle paranoid-ultimate paranoid-setup-alerts
+	@echo "🎉 PARANOID V5 GO-LIVE SEQUENCE COMPLETE!"
+	@echo "✅ Sanity checks passed"
+	@echo "🗂️ S3 lifecycle configured"
+	@echo "🚀 Enterprise pipeline deployed"
+	@echo "🚨 Alert rules ready for import"
+	@echo ""
+	@echo "🔧 MANUAL STEPS REMAINING:"
+	@echo "1. Import monitoring/prometheus-alert-rules.yaml to Prometheus"
+	@echo "2. Import monitoring/grafana-paranoid-dashboard.json to Grafana" 
+	@echo "3. Import monitoring/grafana-alerts-config.json to Grafana"
+	@echo "4. Configure notification channels (Slack/PagerDuty)"
+	@echo "5. Run: make paranoid-production-check"
+	@echo ""
+	@echo "🎯 PRODUCTION READY!"
+
+# ===== LEGACY FERTILITY MODEL =====
 .PHONY: enrich
 
 enrich:

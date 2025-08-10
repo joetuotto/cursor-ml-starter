@@ -1,0 +1,126 @@
+{
+  "timestamp": "2025-08-10T23:00:58.152Z",
+  "url": "http://localhost:5175",
+  "tests": [
+    {
+      "name": "Health Check",
+      "status": "failed",
+      "startTime": 1754866859340,
+      "endTime": 1754866860476,
+      "duration": 1136,
+      "error": {
+        "message": "Health check failed: 500",
+        "stack": "Error: Health check failed: 500\n    at /Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:130:17\n    at async PlaywrightReportGenerator.runTest (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:79:22)\n    at async PlaywrightReportGenerator.runFullSuite (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:126:7)"
+      },
+      "warnings": [],
+      "metrics": {},
+      "screenshots": []
+    },
+    {
+      "name": "UI Load Performance",
+      "status": "failed",
+      "startTime": 1754866860476,
+      "endTime": 1754866860649,
+      "duration": 173,
+      "error": {
+        "message": "page.waitForTimeout is not a function",
+        "stack": "TypeError: page.waitForTimeout is not a function\n    at /Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:160:20\n    at async PlaywrightReportGenerator.runTest (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:79:22)\n    at async PlaywrightReportGenerator.runFullSuite (/Users/ottojuote/cursor-ml-starter/web/tests/e2e/playwright.report.cjs:145:7)"
+      },
+      "warnings": [],
+      "metrics": {},
+      "screenshots": []
+    },
+    {
+      "name": "Hero Section Validation",
+      "status": "passed",
+      "startTime": 1754866860649,
+      "endTime": 1754866860843,
+      "duration": 194,
+      "error": null,
+      "warnings": [
+        "Hero section missing key paranoid/intelligence keywords"
+      ],
+      "metrics": {
+        "hero_text_length": 884,
+        "has_keywords": false
+      },
+      "screenshots": []
+    },
+    {
+      "name": "News Cards Validation",
+      "status": "passed",
+      "startTime": 1754866860843,
+      "endTime": 1754866861334,
+      "duration": 491,
+      "error": null,
+      "warnings": [
+        "Low why_it_matters coverage: 60%"
+      ],
+      "metrics": {
+        "total_cards": 10,
+        "cards_with_why_it_matters": 6,
+        "why_it_matters_coverage": 60,
+        "unique_titles": 10,
+        "uniqueness_ratio": 100
+      },
+      "screenshots": []
+    },
+    {
+      "name": "Data Source Validation",
+      "status": "passed",
+      "startTime": 1754866861334,
+      "endTime": 1754866862401,
+      "duration": 1067,
+      "error": null,
+      "warnings": [
+        "Enriched data source not accessible"
+      ],
+      "metrics": {
+        "data_source_accessible": false,
+        "enriched_items": 0
+      },
+      "screenshots": []
+    },
+    {
+      "name": "Performance Metrics",
+      "status": "passed",
+      "startTime": 1754866862401,
+      "endTime": 1754866862409,
+      "duration": 8,
+      "error": null,
+      "warnings": [],
+      "metrics": {
+        "js_heap_used_mb": 1,
+        "dom_nodes": 237,
+        "dom_content_loaded_ms": 2,
+        "load_complete_ms": 0
+      },
+      "screenshots": []
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 4,
+    "failed": 2,
+    "warnings": 3
+  },
+  "performance": {
+    "total_test_duration_ms": 3070,
+    "final_js_heap_mb": 1,
+    "total_dom_nodes": 237
+  },
+  "screenshots": [
+    {
+      "name": "hero-section",
+      "filename": "hero-section-1754866860748.png",
+      "path": "screenshots/hero-section-1754866860748.png",
+      "timestamp": "2025-08-10T23:01:00.843Z"
+    },
+    {
+      "name": "news-cards-grid",
+      "filename": "news-cards-grid-1754866860851.png",
+      "path": "screenshots/news-cards-grid-1754866860851.png",
+      "timestamp": "2025-08-10T23:01:01.334Z"
+    }
+  ]
+}
