@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "generated_at": "2025-08-10T23:28:32.848887+00:00",
+    "total_items": 3,
+    "source_signals": 8,
+    "enrichment_version": "simple_v1",
+    "quality_score": 0.89
+  },
+  "items": [
+    {
+      "kicker": "Information Dynamics",
+      "title": "ALERT: Systematic Framing Changes Signal Information Strategy Shift",
+      "lede_title": "Statistical Modeling Reveals Sophisticated Information Warfare Tactics",
+      "lede": "Systematic pattern recognition algorithms have detected unusual narrative shifts activity consistent with organized influence campaigns, prompting enhanced monitoring protocols across multiple information ecosystems.",
+      "why_it_matters": "Information integrity forms the foundation of democratic discourse and informed decision-making. Systematic manipulation of information ecosystems undermines public trust and threatens the ability of societies to address complex challenges through transparent debate.",
+      "cta": {
+        "label": "View Analysis",
+        "url": "/signals/PV5-20250811-003"
+      },
+      "published_at": "2025-08-10T05:28:32.848720+00:00",
+      "signal_meta": {
+        "signal_id": "PV5-20250811-003",
+        "category": "narrative_shifts",
+        "severity": "HIGH",
+        "confidence": 0.918,
+        "region": "US"
+      }
+    },
+    {
+      "kicker": "Historical Analysis",
+      "title": "Historical Visibility Analysis Reveals Concerning Patterns",
+      "lede_title": "Advanced Pattern Recognition Identifies Systematic Information Control",
+      "lede": "Cross-platform behavioral analysis reveals sophisticated coordination mechanisms targeting information control objectives, with statistical confidence levels indicating medium priority threat classification.",
+      "why_it_matters": "Early detection of information manipulation campaigns allows for timely countermeasures and public awareness initiatives. This intelligence supports efforts to maintain information ecosystem integrity and protect authentic discourse.",
+      "cta": {
+        "label": "View Analysis",
+        "url": "/signals/PV5-20250811-004"
+      },
+      "published_at": "2025-08-10T09:28:32.848874+00:00",
+      "signal_meta": {
+        "signal_id": "PV5-20250811-004",
+        "category": "secret_history_signals",
+        "severity": "MEDIUM",
+        "confidence": 0.974,
+        "region": "APAC"
+      }
+    },
+    {
+      "kicker": "Historical Analysis",
+      "title": "URGENT: Documentation Gaps Suggest Historical Record Manipulation",
+      "lede_title": "Network Analysis Uncovers Coordinated Inauthentic Activity Patterns",
+      "lede": "Advanced intelligence analysis using multi-source data fusion has identified coordinated information operations in the LATAM region, with confidence levels reaching 86.6% according to Paranoid Model v5 assessments.",
+      "why_it_matters": "Information integrity forms the foundation of democratic discourse and informed decision-making. Systematic manipulation of information ecosystems undermines public trust and threatens the ability of societies to address complex challenges through transparent debate.",
+      "cta": {
+        "label": "View Analysis",
+        "url": "/signals/PV5-20250811-007"
+      },
+      "published_at": "2025-08-10T10:28:32.848883+00:00",
+      "signal_meta": {
+        "signal_id": "PV5-20250811-007",
+        "category": "secret_history_signals",
+        "severity": "CRITICAL",
+        "confidence": 0.866,
+        "region": "LATAM"
+      }
+    }
+  ]
+}
