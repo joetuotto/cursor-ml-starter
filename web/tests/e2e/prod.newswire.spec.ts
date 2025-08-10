@@ -1,121 +1,92 @@
+// web/tests/e2e/prod.newswire.spec.ts
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
-const PROD_URL = process.env.PROD_URL?.replace(/\/$/, '') ?? 'https://fertility-api-2q3ac3ofma-lz.a.run.app';
-const PAGE_URL = `${PROD_URL}/newswire/#trends`;
-const HEALTH_URL = `${PROD_URL}/health`;
+const PROD_URL = process.env.PROD_URL ?? 'https://fertility-api-2q3ac3ofma-lz.a.run.app';
+const NEWSWIRE = `${PROD_URL.replace(/\/$/, '')}/newswire/#trends`;
+const ARTIFACT_JSON = process.env.ENRICHED_JSON ?? path.resolve('artifacts/report.enriched.json');
 
-async function queryOne(page: any, selectors: string[]) {
-  for (const sel of selectors) {
-    const el = page.locator(sel);
-    if ((await el.first().count()) > 0) return el.first();
-  }
-  return page.locator('__never__');
+function mdTrim(s?: string | null) {
+  return (s ?? '').replace(/\s+/g, ' ').trim();
 }
 
-test.describe('Prod Newswire smoke', () => {
-  test.setTimeout(30_000);
-  test('health 200 + page has enriched items + no console errors', async ({ page }, testInfo) => {
-    const consoleErrors: { type: string; text: string }[] = [];
+test.setTimeout(30_000);
+
+test.describe('Prod newswire smoke', () => {
+  test('health is 200', async ({ request }) => {
+    const res = await request.get(`${PROD_URL}/health`, { timeout: 10_000 });
+    expect(res.status(), 'GET /health must be HTTP 200').toBe(200);
+  });
+
+  test('trends page renders and cards look right', async ({ page }, testInfo) => {
+    const consoleErrors: string[] = [];
     page.on('console', (msg) => {
-      if (['error'].includes(msg.type())) consoleErrors.push({ type: msg.type(), text: msg.text() });
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
 
-    const health = await page.request.get(HEALTH_URL);
-    const okStatus = health.status() === 200;
-    const healthBody = await health.text();
+    const resp = await page.goto(NEWSWIRE, { waitUntil: 'domcontentloaded' });
+    expect(resp?.status(), 'GET /newswire/#trends must be HTTP 200').toBe(200);
 
-    const resp = await page.goto(PAGE_URL, { waitUntil: 'networkidle' });
-    expect(resp, 'page should respond').toBeTruthy();
+    // Best-effort korttiselector – säädä tarvittaessa:
+    const cardSel = '[data-testid="news-card"], article.news-card, .news-card';
+    await page.waitForSelector(cardSel, { timeout: 10_000 });
 
-    const status = resp!.status();
-    if (status === 404) {
-      await saveArtifacts(page, testInfo, '404');
-      test.skip(true, '/newswire returned 404 – skipping content checks');
+    const cards = await page.$$(cardSel);
+    expect(cards.length, 'At least 1 card should render').toBeGreaterThan(0);
+
+    // Tarkistetaan ensimmäiset 3 korttia (tai vähemmän jos ei riitä)
+    const count = Math.min(cards.length, 3);
+    for (let i = 0; i < count; i++) {
+      const card = cards[i];
+
+      // Yleisimmät kenttäselektorit (data-testid -> class -> semanttinen tagi)
+      const kicker = await card.locator('[data-testid="kicker"], .kicker, header .kicker, [class*="kicker"]').first().textContent().catch(() => '');
+      const lede = await card.locator('[data-testid="lede"], .lede, p.lede, [class*="lede"]').first().textContent().catch(() => '');
+      const why = await card.locator('[data-testid="why-it-matters"], .why-it-matters, [class*="whyItMatters"]').first().textContent().catch(() => '');
+      const ctaBtn = await card.locator('[data-testid="cta"], a.cta, button.cta, [class*="cta"]').first();
+      const svg = await card.locator('svg').first();
+
+      expect(mdTrim(kicker), `card #${i + 1}: kicker missing`).not.toHaveLength(0);
+      expect(mdTrim(lede), `card #${i + 1}: lede missing`).not.toHaveLength(0);
+      expect(mdTrim(why), `card #${i + 1}: why_it_matters missing`).not.toHaveLength(0);
+      await expect(ctaBtn, `card #${i + 1}: CTA missing`).toBeVisible();
+      await expect(svg, `card #${i + 1}: symbolic SVG missing`).toBeVisible();
     }
 
-    const card = await queryOne(page, [
-      '[data-testid="feed-card"]',
-      '.feed-card',
-      '[role="article"]',
-      'article',
-      '[data-test="feed-card"]',
-    ]);
-    await expect(card, 'should render at least one feed card').toHaveCount(1);
+    // Pehmeä vertailu enriched-artifacttiin (jos löytyy)
+    if (fs.existsSync(ARTIFACT_JSON)) {
+      try {
+        const raw = fs.readFileSync(ARTIFACT_JSON, 'utf-8');
+        const data = JSON.parse(raw);
+        const firstCard = cards[0];
+        const pageKicker = mdTrim(await firstCard.locator('[data-testid="kicker"], .kicker, header .kicker, [class*="kicker"]').first().textContent().catch(() => ''));
+        const pageLede = mdTrim(await firstCard.locator('[data-testid="lede"], .lede, p.lede, [class*="lede"]').first().textContent().catch(() => ''));
 
-    const kicker = await queryOne(page, [
-      '[data-testid="kicker"]',
-      '.kicker',
-      '[data-field="kicker"]',
-      'header .kicker',
-    ]);
-    const lede = await queryOne(page, [
-      '[data-testid="lede"]',
-      '.lede, .lead, .intro',
-      '[data-field="lede"]',
-    ]);
-    const why = await queryOne(page, [
-      '[data-testid="why-it-matters"]',
-      '.why-it-matters, .why',
-      '[data-field="why_it_matters"]',
-      'section:has-text("Why it matters")',
-    ]);
-    const svg = await queryOne(page, [
-      '[data-testid="symbolic-art"] svg',
-      'figure svg',
-      'svg',
-    ]);
-    const cta = await queryOne(page, [
-      '[data-testid="cta"]',
-      'a.cta',
-      'a[rel="noopener"], a[rel="noreferrer"], a[target="_blank"]',
-      'a[href]',
-    ]);
+        const dataKicker = mdTrim(data?.kicker ?? data?.items?.[0]?.kicker);
+        const dataLede = mdTrim(data?.lede ?? data?.items?.[0]?.lede);
 
-    await expect.soft(kicker, 'kicker näkyy').toHaveCount(1);
-    await expect.soft(lede, 'lede näkyy').toHaveCount(1);
-    await expect.soft(why, 'why_it_matters näkyy').toHaveCount(1);
-    await expect.soft(svg, 'symbolic SVG näkyy').toHaveCount(1);
-    await expect.soft(cta, 'CTA-linkki löytyy').toHaveCount(1);
+        // Ei kaadeta, mutta ilmoitetaan selkeästi mismatch
+        if (dataKicker) {
+          expect(pageKicker, 'first card kicker should match enriched JSON (normalized)').toContain(dataKicker.slice(0, Math.min(32, dataKicker.length)));
+        }
+        if (dataLede) {
+          expect(pageLede, 'first card lede should roughly match enriched JSON (normalized)').toContain(dataLede.slice(0, Math.min(48, dataLede.length)));
+        }
+      } catch (e) {
+        testInfo.attach('enriched-compare-note', { body: `Compare skipped or soft-failed: ${(e as Error).message}` });
+      }
+    } else {
+      testInfo.attach('enriched-compare-note', { body: `Artifact not found at ${ARTIFACT_JSON}; skipped compare.` });
+    }
 
-    const kickerText = (await kicker.textContent())?.trim() ?? '';
-    const ledeText = (await lede.textContent())?.trim() ?? '';
-    const whyText = (await why.textContent())?.trim() ?? '';
-    const ctaHref = (await cta.getAttribute('href')) ?? '';
+    // Talletetaan screenshot ja HTML
+    const shot = await page.screenshot({ fullPage: true });
+    await testInfo.attach('screenshot', { body: shot, contentType: 'image/png' });
+    const html = await page.content();
+    await testInfo.attach('html', { body: html, contentType: 'text/html' });
 
-    await saveArtifacts(page, testInfo, 'ok', {
-      health: { ok: okStatus, status: health.status(), body: healthBody.slice(0, 200) },
-      pageStatus: status,
-      firstCard: { kickerText, ledeText, whyText, ctaHref },
-      consoleErrors,
-      urls: { PAGE_URL, HEALTH_URL },
-    });
-
-    expect.soft(consoleErrors, 'no console errors').toEqual([]);
-    expect.soft(okStatus, `/health should be 200 (got ${health.status()})`).toBeTruthy();
+    // Failaa jos on konsolivirheitä
+    expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n')}`).toHaveLength(0);
   });
 });
-
-async function saveArtifacts(page: any, testInfo: any, tag: string, extra?: unknown) {
-  const outDir = testInfo.outputDir || testInfo.outputPath('');
-  const ensure = (p: string) => {
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    return p;
-  };
-
-  const snap = ensure(path.join(outDir, `newswire-${tag}.png`));
-  const html = ensure(path.join(outDir, `newswire-${tag}.html`));
-  const json = ensure(path.join(outDir, `newswire-${tag}.json`));
-
-  await page.screenshot({ path: snap, fullPage: true });
-  const content = await page.content();
-  fs.writeFileSync(html, content, 'utf8');
-  if (extra) fs.writeFileSync(json, JSON.stringify(extra, null, 2), 'utf8');
-
-  testInfo.attachments.push(
-    { name: `screenshot-${tag}`, path: snap, contentType: 'image/png' },
-    { name: `html-${tag}`, path: html, contentType: 'text/html' },
-    ...(extra ? [{ name: `report-${tag}`, path: json, contentType: 'application/json' } as const] : [])
-  );
-}
