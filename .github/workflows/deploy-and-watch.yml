@@ -71,6 +71,11 @@ jobs:
           chmod +x scripts/deploy_cloud_run.sh
           ./scripts/deploy_cloud_run.sh
 
+      - name: Smoke test (prod)
+        run: |
+          chmod +x scripts/smoke.sh
+          ORIGIN="${{ vars.PROD_API_ORIGIN || secrets.PROD_API_ORIGIN || 'https://api.paranoidmodels.com' }}" scripts/smoke.sh
+
       # Valinnainen: odota serttiä/watcheri hoitaa, mutta tehdään kevyt health-probe
       - name: Pick E2E base URL (custom-domain first)
         id: pick-base

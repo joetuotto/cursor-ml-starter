@@ -27,6 +27,45 @@ Yhden komennon ajo:
 python3 -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install -r requirements.txt && pytest -q && python -m src.cli train --csv ./data/data.csv
 ```
 
+### FastAPI Server (Local Development)
+
+Projekti sisältää FastAPI-rajapinnan jossa on:
+- `/health` - Palvelimen status
+- `/schemas/feed_item.json` - JSON-skeema (FileResponse, Cache-Control headers)
+- `/predict` - Mallin käyttö (fertility rate prediction)
+
+#### Lokaali ajo:
+
+```bash
+# Asenna riippuvuudet
+pip install -r requirements.txt
+
+# Käynnistä API
+uvicorn app.main:app --reload --port 8000
+
+# Testaa endpoints
+curl -sS http://localhost:8000/health
+curl -i http://localhost:8000/schemas/feed_item.json
+curl -sS -X POST http://localhost:8000/predict -H 'content-type: application/json' \
+  -d '{"emf":1.5,"income":2500,"urbanization":0.6}'
+```
+
+#### Cloud Run Deployment:
+
+```bash
+# Deploy source-based
+gcloud run deploy fertility-api \
+  --region europe-north1 \
+  --source . \
+  --update-env-vars SCHEMA_PATH=/app/artifacts/feed_item_schema.json,MODEL_VERSION=gb-1.0.0 \
+  --allow-unauthenticated
+
+# Test deployed API
+curl -sS https://fertility-api-<hash>-ew.a.run.app/health
+```
+
+**Huom:** Schema-endpoint vaatii että `artifacts/feed_item_schema.json` tiedosto on olemassa. Luo se ajamalla malli-training ensin.
+
 ### Ops / Runbook
 
 Squash-merge ja prod-smoke yhdellä komennolla
