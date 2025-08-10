@@ -128,3 +128,19 @@ RUN_ID=$(gh run list --workflow post-merge-enrich-smoke.yml --limit 1 --json dat
 mkdir -p artifacts && gh run download "$RUN_ID" --name report.enriched.json -D artifacts
 jq '{kicker, lede, category, cta}' artifacts/report.enriched.json
 ```
+
+### UI Smoke (Puppeteer)
+- Local:
+  ```bash
+  cd web
+  export PROD_URL="https://api.paranoidmodels.com"
+  node tests/e2e/prod.newswire.smoke.cjs
+  ```
+
+- Makefile:
+  ```bash
+  make ui-smoke-prod             # uses PROD_URL or defaults to https://api.paranoidmodels.com
+  ```
+
+- CI (manual): Actions → UI Smoke (Puppeteer) → Run workflow
+  (Optional prod_url overrides default)

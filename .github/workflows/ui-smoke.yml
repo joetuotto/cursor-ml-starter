@@ -1,0 +1,57 @@
+name: UI Smoke (Puppeteer)
+
+on:
+  workflow_dispatch:
+    inputs:
+      prod_url:
+        description: "Prod base URL (overrides default)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "15 * * * *" # kerran tunnissa (voit poistaa jos et halua ajastusta)
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+    env:
+      PROD_URL: ${{ inputs.prod_url != '' && inputs.prod_url || vars.PROD_URL || 'https://api.paranoidmodels.com' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Puppeteer
+        working-directory: web
+        run: npm i puppeteer
+
+      - name: Smoke run
+        id: smoke
+        working-directory: web
+        shell: bash
+        run: |
+          echo "PROD_URL=${PROD_URL}"
+          mkdir -p artifacts
+          node tests/e2e/prod.newswire.smoke.cjs 2>&1 | tee artifacts/ui-smoke.log
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-artifacts
+          path: |
+            web/artifacts/ui-smoke.log
+          if-no-files-found: ignore
+
+      - name: Failure notify (Slack/TG)
+        if: failure()
+        run: |
+          python3 scripts/notify_manual.py --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TG_BOT_TOKEN:      ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID:        ${{ secrets.TG_CHAT_ID }}
+          NOTIFY_DRY_RUN:    ${{ vars.NOTIFY_DRY_RUN || '' }}
