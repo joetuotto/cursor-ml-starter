@@ -285,6 +285,32 @@ hybrid-run:
 hybrid-cost:
 	@python3 scripts/hybrid_budget.py
 
+# Self-Learning System
+.PHONY: selflearn-setup selflearn-daily selflearn-report selflearn-test selflearn-backfill
+
+selflearn-setup:
+	@python3 -c "import os, pathlib; pathlib.Path('artifacts/feedback').mkdir(parents=True, exist_ok=True); pathlib.Path('artifacts/selflearn').mkdir(parents=True, exist_ok=True)"
+	@pip install pyyaml numpy || echo "⚠️  Install dependencies: pip install pyyaml numpy"
+	@echo "✅ Self-learning system ready"
+
+selflearn-daily:
+	@echo "🧠 Running daily self-learning cycle..."
+	@python3 scripts/self_learn_daily.py --cfg config/selflearn.yaml
+
+selflearn-report:
+	@echo "📊 Generating self-learning report..."
+	@python3 scripts/self_learn_report.py --out artifacts/selflearn/report.html
+	@echo "🌐 Report: artifacts/selflearn/report.html"
+
+selflearn-test:
+	@echo "🧪 Testing self-learning system..."
+	@python3 scripts/self_learn_test.py
+
+selflearn-backfill:
+	@echo "⏪ Backfilling historical data..."
+	@python3 scripts/self_learn_daily.py --cfg config/selflearn.yaml --dry-run
+	@echo "✅ Backfill completed"
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"

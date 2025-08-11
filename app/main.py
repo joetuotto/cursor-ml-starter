@@ -141,6 +141,77 @@ def get_newswire_fi(limit: int = 20):
     """Get Finnish newswire items"""
     return get_newswire(origin_country="FI", limit=limit)
 
+# Self-learning feedback endpoint
+@app.post("/feedback")
+def receive_feedback(request: Request):
+    """Receive user feedback for self-learning system"""
+    import json
+    import sys
+    from pathlib import Path
+    
+    # Add project root to path for imports
+    project_root = Path(__file__).parent.parent
+    sys.path.append(str(project_root))
+    
+    try:
+        from src.hybrid.collector import FeedbackCollector
+        
+        # Parse request body
+        body = request.json() if hasattr(request, 'json') else {}
+        
+        event_id = body.get('event_id')
+        feedback_type = body.get('type', 'user')  # 'user' or 'editor'
+        feedback_data = body.get('data', {})
+        
+        if not event_id:
+            return {"error": "Missing event_id"}
+        
+        # Log feedback
+        collector = FeedbackCollector()
+        collector.append_feedback(event_id, feedback_type, feedback_data)
+        
+        return {
+            "status": "success",
+            "event_id": event_id,
+            "feedback_type": feedback_type
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to process feedback: {str(e)}"}
+
+@app.get("/selflearn/status")
+def get_selflearn_status():
+    """Get self-learning system status"""
+    import sys
+    from pathlib import Path
+    
+    project_root = Path(__file__).parent.parent
+    sys.path.append(str(project_root))
+    
+    try:
+        from src.hybrid.calibrator import CostController
+        from src.hybrid.bandit import BanditRouter
+        
+        cost_controller = CostController()
+        bandit_router = BanditRouter()
+        
+        # Load latest cycle results
+        latest_cycle_path = project_root / "artifacts/selflearn/latest_cycle.json"
+        latest_cycle = {}
+        if latest_cycle_path.exists():
+            import json
+            with open(latest_cycle_path, 'r') as f:
+                latest_cycle = json.load(f)
+        
+        return {
+            "budget_status": cost_controller.get_status(),
+            "bandit_stats": bandit_router.bandit.get_statistics(),
+            "latest_cycle": latest_cycle
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to get status: {str(e)}"}
+
 # Root page (GET/HEAD) - serve index.html
 @app.get("/")
 def root():

@@ -1,0 +1,31 @@
+# config/selflearn.yaml
+feedback_store: "artifacts/feedback/events.jsonl"  # append-only
+state_dir: "artifacts/selflearn"
+window_days: 14          # arvioi viimeiset 14 päivää
+min_samples_route: 50    # ettei ylireagoi pieniin otoksiin
+min_samples_prompt: 30
+quality_gates:
+  min_card_pass_rate: 0.80           # schema+grounding ok
+  min_coverage_why_matters: 0.85
+  max_hallu_rate: 0.05
+  max_ref_miss_rate: 0.10
+  # jos alittuu → rollback ja poista viimeisimmät muutokset käytöstä
+routing:
+  algorithm: "thompson"               # tai "ucb"
+  features: ["lang", "country", "topic", "source_reputation", "complexity"]
+  cost_weight: 0.25                   # paino kustannukselle
+  quality_weight: 0.75                # paino laadulle
+  cold_start_gpt5_topics: ["FI/*","ECB","Fed","NatSec"]
+prompt_tuning:
+  method: "bayesopt"                  # tai "ab"
+  variants_per_model: 3
+  budget_share: 0.15                  # 15% liikenteestä kokeiluihin
+  success_metric: "editor_accept_rate"
+calibration:
+  target_budget_eur_month: 30
+  soft_cap: 1.10     # sallittu ylitys, säätää automaattisesti reititystä
+  hard_cap: 1.25     # kovakatto → fallback "validation only"
+rollbacks:
+  regression_guardrail: true
+  compare_days: 7
+  require_improvement: ["hallu_rate","ref_miss_rate"]
