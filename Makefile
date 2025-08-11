@@ -358,6 +358,11 @@ hybrid-run-enhanced:
 	@echo "📄 Generated enhanced content:"
 	@head -20 artifacts/report.enriched.json
 
+.PHONY: enrich-hybrid
+enrich-hybrid:
+	@echo "👉 Running hybrid enrichment → artifacts/report.enriched.json"
+	@python3 scripts/test_hybrid_enrich.py
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"
