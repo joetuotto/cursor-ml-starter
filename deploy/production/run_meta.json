@@ -1,38 +1,38 @@
 {
   "deployment": {
-    "timestamp": "2025-08-10T23-01-30.904270+00-00",
+    "timestamp": "2025-08-11T07-02-28.403511+00-00",
     "deployer": "ottojuote",
     "environment": "production",
     "version": "latest",
-    "commit_hash": "dc3aee6e0b9b59c1a656376eb1abc4661d505936",
+    "commit_hash": "736adec615867c43f503d7692adabe9925fd4477",
     "provider": "local"
   },
   "data_sources": {
     "wgi_snapshot_date": "unknown",
     "gdelt_range_days": 90,
     "gdelt_min_events": 200000,
-    "data_version": "unknown"
+    "data_version": "1e578c7312ab"
   },
   "artifacts": {
     "metrics.json": {
-      "size_bytes": 1600,
-      "sha256": "d9fef8df4d7d31242ceab9248564746cc4b34f42e7a2eb93f7a91ff4ae7d7e50",
-      "modified": "2025-08-11T01:39:05.541154"
+      "size_bytes": 1612,
+      "sha256": "300af13c5886b527bd426c1dbe33a26f7aac1bd768a4e97a7f6ea66f4b283de7",
+      "modified": "2025-08-11T09:56:58.771774"
     },
     "signal.raw.json": {
-      "size_bytes": 510,
-      "sha256": "2895ec5e36d52bd2dfe751615d18b310de1285afb02a3c36f8d37b7b40df4f5c",
-      "modified": "2025-08-11T01:44:37.000570"
+      "size_bytes": 124,
+      "sha256": "ffe56ebc0f0aca0b3d9823e8335698a53ae8e41346c137f4ad239d5a2df57171",
+      "modified": "2025-08-11T09:57:42.393997"
     },
     "report.enriched.json": {
-      "size_bytes": 5484,
-      "sha256": "57c38f81e7ca0d6d81902620259828ef0985b6aec245ebd37037a60b8201f678",
-      "modified": "2025-08-11T00:38:36.702669"
+      "size_bytes": 3505,
+      "sha256": "26d51e2ce50f64551981b960f68a343248377a0df520532343759557355962c7",
+      "modified": "2025-08-11T02:28:32.849320"
     },
     "paranoid_models.joblib": {
-      "size_bytes": 21286,
-      "sha256": "862a0201da92b7646bfea867a1ea784d4baea1959eaf6427ce5048a824c2470a",
-      "modified": "2025-08-11T01:39:05.544942"
+      "size_bytes": 9326,
+      "sha256": "1ea7cbca7ee02635e3db506d293ff91c00bae92b04d2b57a57305e7f8de11319",
+      "modified": "2025-08-11T09:56:58.774372"
     }
   },
   "quality_gates": {

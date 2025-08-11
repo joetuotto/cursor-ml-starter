@@ -208,6 +208,26 @@ paranoid-promote-force:
 
 # ===== ULTIMATE ENTERPRISE PIPELINE =====
 
+paranoid-cloud-run:
+	PROJECT_ID=${PROJECT_ID} REGION=${REGION} SERVICE_NAME=${SERVICE_NAME} ./scripts/deploy_cloud_run.sh
+
+paranoid-prod-check:
+	@echo "🏥 Health check Cloud Runille"
+	@URL=$$(gcloud run services describe $(SERVICE_NAME) --region $(REGION) --format="value(status.url)"); \
+	curl -fsS $$URL/health && echo " ✅ OK" || (echo " ❌ FAIL"; exit 1)
+
+deploy-paranoid:
+	@echo "🚀 Starting self-healing PARANOID V5 deployment pipeline..."
+	bash scripts/deploy_paranoid_full.sh
+
+deploy-paranoid-with-image:
+	@echo "🚀 Deploying PARANOID V5 with new container image..."
+	IMAGE=$(IMAGE) bash scripts/deploy_paranoid_full.sh
+
+rollback-paranoid:
+	@echo "🔄 Executing manual rollback..."
+	bash scripts/rollback_paranoid.sh
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"
@@ -339,13 +359,7 @@ enrich-smoke-prod-notify: enrich-smoke-prod
 		  fi; \
 		fi; \
 		if [ -n "$$TG_BOT_TOKEN" ] && [ -n "$$TG_CHAT_ID" ]; then \
-		  esc() { python - "$1" <<'PY'
-import sys, re
-s=sys.argv[1]
-print(re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\\\1', s))
-PY
-}; \
-		  S=$$(esc "$$SUMMARY"); L=$$(esc "$$LEDE"); \
+		  S="$$SUMMARY"; L="$$LEDE"; \
 		  TEXT=$$(printf '✅ Enrich smoke (manual)\n*%s* — %s\nRun: %s\nArtifact: report.enriched.json' "$$S" "$$L" "$$RUN_URL"); \
 		  if [ -n "$$NOTIFY_DRY_RUN" ]; then \
 		    echo "[dry-run] Telegram text:" && echo "$$TEXT"; \

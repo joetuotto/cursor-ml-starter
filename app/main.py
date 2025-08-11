@@ -1,13 +1,32 @@
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os, os.path, time
 
-app = FastAPI()
+app = FastAPI(title="PARANOID Models API")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://paranoidmodels.com", "https://www.paranoidmodels.com", "*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 BOOT = time.time()
 SCHEMA_PATH = os.getenv("SCHEMA_PATH", "/app/artifacts/feed_item_schema.json")
 MODEL_VERSION = os.getenv("MODEL_VERSION", "gb-1.0.0")
+
+# Paths for static assets
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
+INDEX_PATH = os.path.join(ASSETS_DIR, "index.html")
+
+# Mount static assets
+if os.path.exists(os.path.join(ASSETS_DIR, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(ASSETS_DIR, "assets"), html=False), name="assets")
 
 class PredictIn(BaseModel):
     emf: float
@@ -23,6 +42,10 @@ def health():
         "model_version": MODEL_VERSION,
         "uptime_seconds": time.time() - BOOT,
     }
+
+@app.head("/health")
+def health_head():
+    return Response(status_code=200)
 
 @app.get("/schemas/feed_item.json")
 def schema():
@@ -53,18 +76,32 @@ def predict(x: PredictIn):
     fertility = 2.5 - 0.3*x.emf + 0.0001*x.income - 0.8*x.urbanization
     return {"fertility_rate": fertility, "model_version": MODEL_VERSION}
 
-# Mount static files for the newswire UI
-# Check if static files exist (for local dev vs container)
-static_path = "/app/static" if os.path.exists("/app/static") else "./web/dist"
-if os.path.exists(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
-    
-    # Serve the main UI at /newswire and root
-    @app.get("/newswire/{path:path}")
-    @app.get("/newswire/")
-    @app.get("/")
-    def serve_ui(path: str = ""):
-        index_file = os.path.join(static_path, "index.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file, media_type="text/html")
-        return JSONResponse({"error": "UI not available"}, status_code=404)
+# Root page (GET/HEAD) - serve index.html
+@app.get("/")
+def root():
+    if os.path.exists(INDEX_PATH):
+        return FileResponse(INDEX_PATH, media_type="text/html")
+    return JSONResponse({"error": "UI not available"}, status_code=404)
+
+@app.head("/")
+def root_head():
+    return Response(status_code=200)
+
+# SPA fallback - any unknown path returns index.html
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str, request: Request):
+    # Return assets directly if they exist
+    candidate = os.path.join(ASSETS_DIR, full_path)
+    if os.path.isfile(candidate):
+        return FileResponse(candidate)
+
+    # Otherwise SPA fallback to index.html
+    if os.path.exists(INDEX_PATH):
+        return FileResponse(INDEX_PATH, media_type="text/html")
+    return JSONResponse({"error": "UI not available"}, status_code=404)
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    port = int(os.getenv("PORT", "8080"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

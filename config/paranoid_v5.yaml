@@ -1,21 +1,11 @@
 model:
   name: "paranoid_v5"
-  targets:
-    - name: "sensitive_class"
-      type: "binary"
-      algorithm: "logistic"
-      threshold: 0.5
-    - name: "suppression_event_6w" 
-      type: "binary"
-      algorithm: "logistic"
-      threshold: 0.5
-    - name: "narrative_shift_4w"
-      type: "binary"
-      algorithm: "logistic"
-      threshold: 0.5
-    - name: "conflict_intensity"
-      type: "continuous"
-      algorithm: "ridge"
+
+targets:
+  - "sensitive_class"
+  - "suppression_event_6w"
+  - "narrative_shift_4w"
+  - "conflict_intensity"
 
 features:
   numerical:
@@ -35,22 +25,25 @@ features:
     - region
     - actor_group
   
-  engineered:
-    enable: true
-    interactions: true
-    temporal: true
+  interactions:
+    - ["propaganda_index", "framing_intensity"]
+    - ["coordination_index", "suppression_pressure_index"]
 
 quality_gates:
-  auc_minimum: 0.86
-  pr_auc_minimum: 0.80
-  brier_maximum: 0.20
-  ece_maximum: 0.05
-  delta_auc_maximum: 0.10
+  auc_min: 0.86
+  pr_auc_min: 0.80
+  brier_max: 0.20
+  ece_max: 0.05
+  delta_auc_max: 0.10
 
 validation:
   method: "temporal_cv"
   n_splits: 5
   test_size: 0.2
+
+cv_folds: 5
+seed: 42
+calibration: "platt"
 
 output:
   save_plots: true
