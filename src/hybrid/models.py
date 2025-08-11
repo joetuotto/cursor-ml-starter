@@ -3,6 +3,7 @@ import time
 import json
 import hashlib
 from typing import Dict, Any
+from src.hybrid.providers.cursor_gpt5 import CursorGpt5Provider
 
 # HUOM: Toteuta oikeat API-kutsut omien SDK:ien mukaan.
 # Tässä placeholder-rajapinnat, joita voi korvata helpposti.
@@ -46,3 +47,19 @@ def estimate_cost_eur(model: str, prompt_tokens: int, cfg) -> float:
     if model == "deepseek":
         return (prompt_tokens / 1000) * float(os.getenv("DEEPSEEK_COST_PER_1K_TOKENS","0.0012"))
     return (prompt_tokens / 1000) * float(os.getenv("GPT5_COST_PER_1K_TOKENS","0.02"))
+
+def make_provider(kind: str, cfg: dict):
+    """Provider factory function"""
+    if kind == "cursor":
+        return CursorGpt5Provider(
+            base_url=cfg["base_url"],
+            api_key=os.environ[cfg.get("api_key_env", "CURSOR_API_KEY")],
+            model=cfg["model"],
+            timeout_s=int(cfg.get("timeout_s", 45)),
+            max_output_tokens=int(cfg.get("max_output_tokens", 1200)),
+        )
+    elif kind == "deepseek":
+        # Placeholder for DeepSeek provider
+        return None  # TODO: Implement DeepSeek provider
+    else:
+        raise ValueError(f"Unknown provider kind: {kind}")

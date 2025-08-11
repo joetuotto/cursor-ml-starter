@@ -28,3 +28,36 @@ cache:
 
 output:
   newswire: "artifacts/report.enriched.json"
+
+# Provider configurations
+providers:
+  deepseek:
+    type: deepseek
+    model: deepseek-r1
+    max_output_tokens: 850
+
+  gpt5_cursor:
+    type: cursor
+    base_url: ${CURSOR_BASE_URL}
+    api_key_env: CURSOR_API_KEY
+    model: ${CURSOR_GPT5_MODEL}
+    max_output_tokens: ${CURSOR_MAX_TOKENS}
+    timeout_s: ${CURSOR_TIMEOUT_S}
+
+# Updated routing with force_gpt5_languages
+routing:
+  force_gpt5_languages: ["fi"]     # kaikki suomenkielinen → GPT-5 (Cursor)
+  critical_topics:
+    - fed
+    - ecb
+    - "suomen pankki"
+    - korko
+    - "central banking"
+  risk_threshold: 0.40
+  complexity_threshold: 0.50
+
+# Quality validation using Cursor GPT-5
+quality:
+  validator: gpt5_cursor            # käytä Cursor GPT-5 tarkistukseen
+  fallback_on_fail: true
+  cache_ttl_hours: 72

@@ -311,6 +311,53 @@ selflearn-backfill:
 	@python3 scripts/self_learn_daily.py --cfg config/selflearn.yaml --dry-run
 	@echo "✅ Backfill completed"
 
+# Live LLM Testing
+.PHONY: hybrid-live-setup hybrid-live-test-gpt5 hybrid-live-test-deepseek
+
+hybrid-live-setup:
+	@python3 -c "import jsonschema" 2>/dev/null || pip install jsonschema
+	@python3 -c "import tiktoken" 2>/dev/null || pip install tiktoken
+	@python3 -c "import requests" 2>/dev/null || pip install requests
+	@echo "✅ Live LLM dependencies ready"
+
+hybrid-live-test-gpt5:
+	@echo "🚀 Testing GPT-5 route..."
+	@TEST_ROUTE=gpt5 MOCK_MODE=true python3 scripts/hybrid_live_test.py
+	@echo "📄 Generated content:"
+	@cat artifacts/report.enriched.json
+
+hybrid-live-test-deepseek:
+	@echo "🚀 Testing DeepSeek route..."
+	@TEST_ROUTE=deepseek MOCK_MODE=true python3 scripts/hybrid_live_test.py
+	@echo "📄 Generated content:"
+	@cat artifacts/report.enriched.json
+
+hybrid-live-test-real-gpt5:
+	@echo "🚀 Testing GPT-5 route (REAL API)..."
+	@TEST_ROUTE=gpt5 MOCK_MODE=false python3 scripts/hybrid_live_test.py
+	@echo "📄 Generated content:"
+	@cat artifacts/report.enriched.json
+
+hybrid-live-test-real-deepseek:
+	@echo "🚀 Testing DeepSeek route (REAL API)..."
+	@TEST_ROUTE=deepseek MOCK_MODE=false python3 scripts/hybrid_live_test.py
+	@echo "📄 Generated content:"
+	@cat artifacts/report.enriched.json
+
+# Cursor Pro Testing
+.PHONY: hybrid-cursor-test
+
+hybrid-cursor-test:
+	@echo "🧪 Testing Cursor GPT-5 provider..."
+	@python3 -c "import os, sys; sys.path.append('.'); from src.hybrid.providers.cursor_gpt5 import CursorGpt5Provider; p = CursorGpt5Provider(base_url=os.getenv('CURSOR_BASE_URL','https://api.cursor.sh/v1'), api_key=os.getenv('CURSOR_API_KEY','test-key'), model=os.getenv('CURSOR_GPT5_MODEL','gpt-5-thinking'), timeout_s=int(os.getenv('CURSOR_TIMEOUT_S','45'))); print('✅ Cursor provider created successfully')"
+
+# Enhanced hybrid run with real routing
+hybrid-run-enhanced:
+	@echo "🚀 Running enhanced hybrid processing..."
+	@python3 scripts/hybrid_run.py
+	@echo "📄 Generated enhanced content:"
+	@head -20 artifacts/report.enriched.json
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"
