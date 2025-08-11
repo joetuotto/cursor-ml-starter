@@ -104,9 +104,51 @@ def build_user_prompt(raw_signal_json: str) -> str:
 
 
 def enrich_signal(raw_signal: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Enrich signal using PARANOID model with Finnish localization support"""
     cfg = CursorGpt5Config()
-    system_prompt = build_system_prompt()
-    user_prompt = build_user_prompt(json.dumps(raw_signal, ensure_ascii=False))
+    
+    # Detect origin country for Finnish prompts
+    origin_country = raw_signal.get('origin_country', 'US')
+    
+    # Use Finnish prompts if available
+    if origin_country == 'FI':
+        try:
+            from ..prompts.enrich_fi import get_prompt_template
+            system_prompt, user_template = get_prompt_template(origin_country)
+            
+            # Format Finnish template
+            user_prompt = user_template.format(
+                title=raw_signal.get('title', ''),
+                source_name=raw_signal.get('source_name', ''),
+                source_url=raw_signal.get('source_url', ''),
+                published_at=raw_signal.get('published_at', ''),
+                summary_raw=raw_signal.get('summary_raw', ''),
+                category_guess=raw_signal.get('category_guess', ''),
+                origin_country=origin_country
+            )
+        except ImportError:
+            # Fallback to original prompts
+            system_prompt = build_system_prompt()
+            user_prompt = build_user_prompt(json.dumps(raw_signal, ensure_ascii=False))
+    else:
+        # Use enhanced English prompts
+        try:
+            from ..prompts.enrich_fi import get_prompt_template
+            system_prompt, user_template = get_prompt_template(origin_country)
+            
+            user_prompt = user_template.format(
+                title=raw_signal.get('title', ''),
+                source_name=raw_signal.get('source_name', ''),
+                source_url=raw_signal.get('source_url', ''),
+                published_at=raw_signal.get('published_at', ''),
+                summary_raw=raw_signal.get('summary_raw', ''),
+                category_guess=raw_signal.get('category_guess', ''),
+                origin_country=origin_country
+            )
+        except ImportError:
+            # Fallback to original prompts
+            system_prompt = build_system_prompt()
+            user_prompt = build_user_prompt(json.dumps(raw_signal, ensure_ascii=False))
 
     for attempt in range(cfg.retries + 1):
         try:
@@ -121,6 +163,17 @@ def enrich_signal(raw_signal: Dict[str, Any], schema: Dict[str, Any]) -> Dict[st
                 retries=cfg.retries,
             )
             validate_against_schema(result, schema)
+            
+            # Additional quality validation for Finnish content
+            if origin_country == 'FI':
+                try:
+                    from ..prompts.enrich_fi import validate_enrichment
+                    validation_result = validate_enrichment(result, origin_country)
+                    if not validation_result['valid']:
+                        raise ValueError(f"Finnish quality validation failed: {validation_result['errors']}")
+                except ImportError:
+                    pass  # Skip quality validation if module not available
+            
             # Palette guard for SVG
             allowed = ["#0A2342", "#FF7A00", "#F2F4F7", "#1A1F2B"]
             if "symbolic_art" in result and isinstance(result["symbolic_art"], dict):
