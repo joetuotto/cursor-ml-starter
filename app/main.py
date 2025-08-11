@@ -76,6 +76,71 @@ def predict(x: PredictIn):
     fertility = 2.5 - 0.3*x.emf + 0.0001*x.income - 0.8*x.urbanization
     return {"fertility_rate": fertility, "model_version": MODEL_VERSION}
 
+# Newswire endpoints
+@app.get("/newswire")
+def get_newswire(origin_country: str = None, limit: int = 20):
+    """Get enriched newswire items, optionally filtered by origin country"""
+    # TODO: Replace with actual data source (database query)
+    # For now, return mock data structure
+    mock_items = []
+    if origin_country == "FI":
+        mock_items = [
+            {
+                "id": "fi-sample-1",
+                "title": "Suomen keskuspankki nostaa ohjauskorkoa",
+                "source_name": "YLE",
+                "source_url": "https://yle.fi/example",
+                "published_at": "2025-08-11T10:00:00Z",
+                "origin_country": "FI",
+                "category_guess": "talous",
+                "kicker": "Korkojen nousu kiihtyy",
+                "lede": "Suomen Pankki nosti ohjauskorkoa 0,25 prosenttiyksiköllä 4,75 prosenttiin inflaation hillitsemiseksi. Päätös vaikuttaa suoraan asuntolainojen korkoihin ja kulutukseen. Asiantuntijat odottavat lisäkorotuksia syksyllä.",
+                "why_it_matters": "- Asuntolainojen korot nousevat 0,25 % heti\n- Kuluttajien ostovoimaa heikkenee 200-300 €/kk keskivertotyöntekijällä\n- Rakennusala odottaa 15-20 % kysynnän laskua",
+                "analysis": "Suomen Pankin korkokorotus on suora vastaus kuluttajahintojen 3,8 prosentin nousuun, joka ylittää selvästi 2 prosentin tavoitteen. Päätös heijastaa eurooppalaista trendiä, jossa keskuspankit kiristävät rahapolitiikkaa inflaation hillitsemiseksi. Korkokorotuksen vaikutukset näkyvät nopeimmin asuntolainoissa, joista 80 prosenttia Suomessa on vaihtuvakorkoisia. Keskimääräinen asuntolainan korko nousee nyt 4,2 prosentista 4,45 prosenttiin, mikä tarkoittaa 200 000 euron lainassa noin 50 euron kuukausimaksun nousua. Rakennusalalla odotetaan kysynnän laskua 15-20 prosenttia seuraavan vuoden aikana, kun investointihalukkuus heikkenee. Kulutushyödykkeissä vaikutus näkyy erityisesti autokaupoissa ja kalliimmissa kodinkoneissa, joiden rahoitus kallistuu merkittävästi. Työmarkkinoilla korkojen nousu voi hillitä palkkapainetta, kun inflaatio-odotukset maltillistuvat. Valtiontalouden näkökulmasta korkojen nousu nostaa lainanhoitokustannuksia noin 200 miljoonaa euroa vuositasolla, mikä pakottaa tarkistamaan menokehyksiä. Pankkisektorin kannattavuus sen sijaan paranee, kun korkokate kasvaa nopeammin kuin luottotappiot.",
+                "cta": "Seuraa seuraavan kokouksen päätöstä syyskuussa",
+                "tags": ["korko", "inflaatio", "suomen-pankki", "asuntolainat"],
+                "local_fi": "Korkokorotus vaikuttaa erityisesti Suomen asuntomarkkinoihin, joissa 80% lainoista on vaihtuvakorkoisia. Rakennusala ja kulutushyödykkeet kärsivät eniten.",
+                "local_fi_score": 0.95,
+                "enriched_at": "2025-08-11T10:05:00Z",
+                "model_version": "gpt-4o-fi-v1"
+            }
+        ]
+    else:
+        # Mock global items
+        mock_items = [
+            {
+                "id": "global-sample-1", 
+                "title": "Federal Reserve signals rate pause",
+                "source_name": "Reuters",
+                "source_url": "https://reuters.com/example",
+                "published_at": "2025-08-11T09:30:00Z",
+                "origin_country": "US",
+                "category_guess": "finance",
+                "kicker": "Fed holds steady at 5.25%",
+                "lede": "The Federal Reserve maintained its benchmark interest rate at 5.25% following two consecutive quarters of declining inflation. Chair Powell emphasized data-dependent approach while markets anticipate cuts in Q4. Bond yields fell 15 basis points on the announcement.",
+                "why_it_matters": "- Mortgage rates stabilize around 7.2% for 30-year fixed\n- Corporate borrowing costs remain elevated at 6.8% average\n- Dollar weakened 1.2% against major currencies",
+                "analysis": "The Federal Reserve's decision to pause rate hikes reflects growing confidence that inflation is sustainably declining toward the 2% target. Powell's emphasis on data dependency signals that future moves will hinge on employment figures and core PCE readings rather than predetermined schedules. The 15 basis point decline in 10-year Treasury yields suggests markets are pricing in a 65% probability of rate cuts by December, up from 40% before the announcement. Corporate credit spreads tightened by 8 basis points, indicating improved risk appetite and easier financing conditions for investment-grade borrowers. The dollar's 1.2% decline against the DXY basket creates headwinds for US exporters but provides relief for emerging market debtors with dollar-denominated obligations. Regional bank stocks rallied 3.2% on prospects of stable net interest margins, while growth stocks in technology and consumer discretionary sectors gained 2.8% as discount rates effectively decreased. Housing market dynamics remain complex, with mortgage demand showing minimal response despite the rate pause, suggesting affordability constraints persist at current price levels. The Fed's dot plot revision will be crucial in September, particularly regarding 2025 projections that currently show three additional cuts. Labor market cooling continues with job openings down 15% year-over-year, though wage growth remains sticky at 4.1% annually.",
+                "cta": "Monitor September FOMC meeting for potential pivot signals",
+                "tags": ["fed", "interest-rates", "inflation", "monetary-policy"],
+                "local_fi": "Fed:n päätös tukee Euroopan keskuspankin toimia ja voi vähentää painetta Suomen korkojen nousulle. Vientiteollisuus hyötyy dollarin heikkenemisestä.",
+                "local_fi_score": 0.4,
+                "enriched_at": "2025-08-11T09:35:00Z",
+                "model_version": "gpt-4o-en-v1"
+            }
+        ]
+    
+    # Apply limit
+    return {
+        "items": mock_items[:limit],
+        "total": len(mock_items),
+        "origin_country_filter": origin_country
+    }
+
+@app.get("/newswire/fi")
+def get_newswire_fi(limit: int = 20):
+    """Get Finnish newswire items"""
+    return get_newswire(origin_country="FI", limit=limit)
+
 # Root page (GET/HEAD) - serve index.html
 @app.get("/")
 def root():

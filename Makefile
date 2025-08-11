@@ -228,6 +228,33 @@ rollback-paranoid:
 	@echo "🔄 Executing manual rollback..."
 	bash scripts/rollback_paranoid.sh
 
+# Finnish newswire commands
+fi-ingest:
+	@echo "🇫🇮 Ingesting Finnish news sources..."
+	python -m src.ingest_fi --output artifacts/signal.fi.json --limit 50
+
+fi-enrich:
+	@echo "🇫🇮 Enriching Finnish content..."
+	python -m src.cli enrich --signal artifacts/signal.fi.json --schema artifacts/newswire_schema.json --out artifacts/report.fi.enriched.json
+
+fi-validate:
+	@echo "🇫🇮 Validating Finnish enriched content..."
+	python scripts/validate_enriched.py artifacts/report.fi.enriched.json --verbose
+
+fi-smoke:
+	@echo "🇫🇮 Running Finnish newswire smoke tests..."
+	cd web && PROD_URL="https://paranoid-api-2q3ac3ofma-lz.a.run.app" node tests/e2e/prod.fi.smoke.cjs
+
+fi-e2e:
+	@echo "🇫🇮 Running Finnish E2E tests..."
+	cd web && PROD_URL="https://paranoid-api-2q3ac3ofma-lz.a.run.app" npx playwright test tests/e2e/fi-newswire.spec.ts --retries=1
+
+fi-full:
+	@echo "🇫🇮 Full Finnish pipeline: ingest → enrich → validate"
+	make fi-ingest
+	make fi-enrich  
+	make fi-validate
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"

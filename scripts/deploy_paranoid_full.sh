@@ -119,11 +119,13 @@ sleep 15
 
 # --------- HEALTH CHECKS ---------
 log "Health checks…"
-SITE_CODE="$(curl -o /dev/null -s -w "%{http_code}" "https://$DOMAIN/" --connect-timeout 10 --max-time "$HEALTH_TIMEOUT")"
-API_CODE="$(curl -o /dev/null -s -w "%{http_code}" "https://$DOMAIN/health" --connect-timeout 10 --max-time "$HEALTH_TIMEOUT")"
+# Get the Cloud Run service URL for health checks (more reliable than custom domain)
+SERVICE_URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
+SITE_CODE="$(curl -o /dev/null -s -w "%{http_code}" "$SERVICE_URL/" --connect-timeout 10 --max-time "$HEALTH_TIMEOUT")"
+API_CODE="$(curl -o /dev/null -s -w "%{http_code}" "$SERVICE_URL/health" --connect-timeout 10 --max-time "$HEALTH_TIMEOUT")"
 
-[[ "$SITE_CODE" == "200" ]] || { fail "Site check failed ($SITE_CODE)"; exit 1; }
-[[ "$API_CODE"  == "200" ]] || { fail "API check failed ($API_CODE)"; exit 1; }
+[[ "$SITE_CODE" == "200" ]] || { fail "Site check failed ($SITE_CODE) on $SERVICE_URL"; exit 1; }
+[[ "$API_CODE"  == "200" ]] || { fail "API check failed ($API_CODE) on $SERVICE_URL"; exit 1; }
 
 ok "Site & API healthy (200/200) ✅"
 emit_prom
