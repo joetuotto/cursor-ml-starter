@@ -1,0 +1,20 @@
+{
+  "name": "cursor-ml-starter",
+  "version": "1.0.0",
+  "description": "Pieni regressioprojektin aloituspohja sekä Cursorille valmiit prompt-template:t (katso `prompt_templates.md`).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^24.16.1",
+    "sharp": "^0.33.3"
+  }
+}

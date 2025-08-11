@@ -1,0 +1,161 @@
+name: Deploy Newswire
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION:     ${{ secrets.GCP_REGION }}
+  BUCKET:     ${{ secrets.GCS_BUCKET }}
+  JOB_NAME:   enrich-hybrid
+
+jobs:
+  deploy:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20 for sharp/duotone
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm ci || npm i
+
+      # Content quality gates
+      - name: Validate (Hersh + Dark tolerance)
+        run: |
+          make style-check
+          make feeds
+          make validate-news
+
+      # Generate duotone imgs
+      - name: Build duotone images
+        run: |
+          make images-duotone || echo "(images) duotone skipped"
+
+      # Auth to GCP (use SA JSON key secret or WIF — this uses key for simplicity)
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy all (preview)
+        run: |
+          make deploy-all
+
+      - name: Send Prometheus heartbeat (success)
+        if: success()
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            success \
+            deploy \
+            preview \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"
+
+      - name: Send Prometheus heartbeat (failure)
+        if: failure()
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            failure \
+            deploy \
+            preview \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: "production"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm ci || npm i
+
+      - name: Validate (Hersh + Dark tolerance)
+        run: |
+          make style-check
+          make feeds
+          make validate-news
+
+      - name: Build duotone images
+        run: |
+          make images-duotone || echo "(images) duotone skipped"
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy all (prod)
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          DOMAIN: ${{ env.BUCKET }}
+        run: |
+          LB_AUTOFIX=1 make deploy-all
+
+      - name: Slack notify (success)
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "${SLACK_WEBHOOK_URL}" ]; then \
+            payload=$(printf '{"text":"✅ Deploy success (main)\nRepo: %s\nRun: %s/%s/actions/runs/%s"}' "${GITHUB_REPOSITORY}" "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}"); \
+            curl -s -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL" >/dev/null || true; \
+          fi
+
+      - name: Send Prometheus heartbeat (success)
+        if: success()
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            success \
+            deploy-prod \
+            prod \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"
+
+      - name: Slack notify (failure)
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "${SLACK_WEBHOOK_URL}" ]; then \
+            payload=$(printf '{"text":"❌ Deploy failed (main)\nRepo: %s\nRun: %s/%s/actions/runs/%s"}' "${GITHUB_REPOSITORY}" "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}"); \
+            curl -s -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL" >/dev/null || true; \
+          fi
+
+      - name: Send Prometheus heartbeat (failure)
+        if: failure()
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            failure \
+            deploy-prod \
+            prod \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"

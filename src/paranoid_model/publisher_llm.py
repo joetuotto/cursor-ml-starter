@@ -8,6 +8,9 @@ from typing import Any, Dict, List
 
 from .cursor_client import call_cursor_gpt5 as cursor_call
 
+# Hersh-style imports
+from src.writing.hersh_style import hershify_prompt, enforce_tone
+
 # --- HYBRID LLM drop-in ---
 try:
     import sys
@@ -169,13 +172,18 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
     # === BUDGET RUNTIME GUARDS ===
     try:
         budget_stats = _budget_stats()
-        if _budget_hard_cap_hit():
-            print("⛔ Hard cap reached — forcing deepseek_only mode")
+        if _budget_daily_hard_cap_hit():
+            print(f"🚫 Daily hard cap hit: €{budget_stats['daily_spent']:.2f}/€{budget_stats['daily_max']:.2f} today — forcing deepseek_only")
             os.environ["LLM_PROVIDER_MODE"] = "deepseek_only"
-            _budget_notify_slack(f"⛔ Hard cap reached: spent €{budget_stats['spent']:.2f} / hard €{budget_stats['hard']:.2f} — forcing deepseek_only")
+            _budget_notify_slack(f"🚫 Daily hard cap hit: €{budget_stats['daily_spent']:.2f}/€{budget_stats['daily_max']:.2f} today — forcing deepseek_only")
+        elif _budget_hard_cap_hit():
+            print("⛔ Monthly hard cap reached — forcing deepseek_only mode")
+            os.environ["LLM_PROVIDER_MODE"] = "deepseek_only"
+            _budget_notify_slack(f"⛔ Monthly hard cap reached: spent €{budget_stats['spent']:.2f} / hard €{budget_stats['hard']:.2f} — forcing deepseek_only")
+        elif _budget_should_daily_throttle():
+            print(f"⚠️ Daily throttle active: €{budget_stats['daily_spent']:.2f}/€{budget_stats['daily_max']:.2f} today — saving premium for critical")
         elif _budget_should_throttle():
-            print("⚠️ Soft cap reached — throttling premium usage")
-            _budget_notify_slack(f"⚠️ Soft cap reached: spent €{budget_stats['spent']:.2f} / €{budget_stats['soft']:.2f} — throttling premium usage")
+            print("⚠️ Monthly soft cap reached — throttling premium usage")
     except Exception:
         # Continue if budget module fails
         pass
@@ -258,9 +266,21 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
     else:
         route_reason = f"mode={mode}"
 
-    # 4) Build messages
+    # 4) Build messages with Hersh style
     lang = route_item["lang"]
-    messages = build_messages(content, lang)
+    hersh_prompt = hershify_prompt(lang) + f"""
+
+SOURCE ITEM (minimize paraphrase, maximize facts):
+{content}
+
+RULES:
+- fill all fields, always provide risk_scenario and 2–5 sources
+- output valid JSON only, no markdown fences
+"""
+    messages = [
+        {"role": "system", "content": hersh_prompt},
+        {"role": "user", "content": content}
+    ]
 
     # 5) Run LLM
     try:
@@ -273,23 +293,23 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
             )
             llm_resp = provider.chat(messages, temperature=0.2)
         else:
-            # Mock DeepSeek response for now
-            timestamp = "2025-08-11T13:30:00Z"
+            # Mock DeepSeek response with Hersh schema
             llm_resp = {
                 "ok": True,
                 "text": json.dumps({
                     "kicker": "Market Update",
                     "headline": item.get('title', 'News Update'),
                     "lede": f"Analysis: {item.get('title', 'Unknown')}",
-                    "why_it_matters": "This development affects market dynamics.",
-                    "cta": {"label": "Read more", "href": item.get('source_url', 'https://example.com')},
-                    "timestamp": timestamp,
-                    "locale": lang
+                    "analysis": "Market dynamics suggest institutional involvement. Key beneficiaries include large institutional holders.",
+                    "risk_scenario": "Market manipulation could accelerate if regulatory oversight remains limited.",
+                    "why_it_matters": "This development affects market dynamics and institutional positioning.",
+                    "sources": [item.get('source_url', 'https://test-source.com'), "https://bloomberg.com/markets"],
+                    "lang": lang
                 }),
                 "usage": {"prompt_tokens": 100, "completion_tokens": 50}
             }
     except Exception as e:
-        # Fallback response
+        # Fallback response with Hersh schema
         llm_resp = {
             "ok": False,
             "error": str(e),
@@ -297,37 +317,45 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
                 "kicker": "System Update",
                 "headline": item.get('title', 'Processing Error'),
                 "lede": "Content processing temporarily unavailable.",
+                "analysis": f"System failure in {provider_name} provider. Infrastructure strain or API quota limits likely cause.",
+                "risk_scenario": "Extended outages could cascade to other processing systems, degrading news coverage quality.",
                 "why_it_matters": "System fallback engaged for continuity.",
-                "cta": {"label": "Try again", "href": item.get('source_url', 'https://example.com')},
-                "timestamp": "2025-08-11T13:30:00Z",
-                "locale": lang
+                "sources": [item.get('source_url', 'https://test-source.com'), "https://system-logs.internal"],
+                "lang": lang
             })
         }
 
-    # 6) Parse response
+    # 6) Parse response and apply Hersh tone enforcement
     if llm_resp.get("ok"):
         try:
             card = json.loads(llm_resp["text"])
+            # Enforce Hersh tone and ensure lang field
+            card = enforce_tone(card, lang)
         except json.JSONDecodeError:
             card = {
                 "kicker": "Parse Error",
                 "headline": item.get('title', 'Content Error'),
                 "lede": "Response parsing failed.",
+                "analysis": "Technical parsing error during content processing.",
+                "risk_scenario": "System errors may compound if infrastructure issues persist.",
                 "why_it_matters": "Technical issue resolved in fallback mode.",
-                "cta": {"label": "Source", "href": item.get('source_url', 'https://example.com')},
-                "timestamp": "2025-08-11T13:30:00Z"
+                "sources": [item.get('source_url', 'https://test-source.com'), "https://logs.internal/system"],
+                "lang": lang
             }
     else:
         try:
             card = json.loads(llm_resp["text"])
+            card = enforce_tone(card, lang)
         except (json.JSONDecodeError, KeyError):
             card = {
                 "kicker": "Response Error",
                 "headline": item.get('title', 'Processing Failed'),
                 "lede": "Failed to parse LLM response.",
+                "analysis": "System integration failure between routing and LLM processing layers.",
+                "risk_scenario": "Prolonged processing failures could indicate infrastructure degradation.",
                 "why_it_matters": "System error handled gracefully.",
-                "cta": {"label": "Source", "href": item.get('source_url', 'https://example.com')},
-                "timestamp": "2025-08-11T13:30:00Z"
+                "sources": [item.get('source_url', 'https://test-source.com'), "https://error-logs.internal"],
+                "lang": lang
             }
 
     # 6b) Budget logging (best-effort)

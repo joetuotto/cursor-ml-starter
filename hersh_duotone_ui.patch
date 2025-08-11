@@ -1,0 +1,240 @@
+*** Begin Patch
+*** Add File: scripts/images/duotone.js
++// Duotone card image pipeline
++// Usage: node scripts/images/duotone.js
++// IN:  process.env.NEWS_IMG_SRC (default: assets/news-images)
++// OUT: artifacts/newswire/img/card/<name>-{480,768,1200}.webp
++import fs from "fs";
++import path from "path";
++import sharp from "sharp";
++
++const IN = process.env.NEWS_IMG_SRC || "assets/news-images";
++const OUT = "artifacts/newswire/img/card";
++const SIZES = [480, 768, 1200];
++// Calm premium look on dark background
++const DUO = { fg: "#D1D5DB", bg: "#0B0F1A" };
++
++await fs.promises.mkdir(OUT, { recursive: true });
++if (!fs.existsSync(IN)) {
++  console.warn(`(images) Source folder not found: ${IN}. Create it or set NEWS_IMG_SRC.`);
++  process.exit(0);
++}
++
++const files = (await fs.promises.readdir(IN)).filter(f => /\.(jpe?g|png|webp)$/i.test(f));
++if (!files.length) {
++  console.warn(`(images) No source images in ${IN}. Skipping.`);
++  process.exit(0);
++}
++
++for (const f of files) {
++  const src = path.join(IN, f);
++  const base = path.parse(f).name;
++
++  for (const w of SIZES) {
++    // Base: grayscale, cover crop
++    const g = sharp(src).resize({ width: w, height: Math.round(w * 9/16), fit: "cover" }).grayscale();
++    const gray = await g.toBuffer();
++
++    // Background tile with bg color to multiply
++    const bgTile = await sharp({
++      create: { width: 16, height: 16, channels: 3, background: DUO.bg }
++    }).png().toBuffer();
++
++    // Subtle tone & multiply to achieve duotone; export as WebP
++    const outBuf = await sharp(gray)
++      .recomb([[0.95,0,0],[0,0.95,0],[0,0,0.95]])
++      .modulate({ brightness: 1.0, saturation: 1.0 })
++      .composite([{ input: bgTile, tile: true, blend: "multiply" }])
++      .toColorspace("srgb")
++      .webp({ quality: 82, effort: 4 })
++      .toBuffer();
++
++    const out = path.join(OUT, `${base}-${w}.webp`);
++    await fs.promises.writeFile(out, outBuf);
++  }
++}
++console.log(`✓ Duotone generated → ${OUT}/<name>-{480,768,1200}.webp`);
++
+*** End Patch
+
+*** Begin Patch
+*** Update File: Makefile
+@@
+ # existing targets above…
+ 
++# --- Duotone images & publishing ---
++.PHONY: images-duotone
++images-duotone:
++	@node scripts/images/duotone.js
++
++.PHONY: images-publish
++images-publish:
++	@gsutil -m rsync -r artifacts/newswire/img/card gs://paranoidmodels.com/newswire/img/card
++	@gsutil setmeta -h "Cache-Control:public, max-age=15552000, immutable" gs://paranoidmodels.com/newswire/img/card/**
++
++.PHONY: publish-feeds
++publish-feeds:
++	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.en.json gs://paranoidmodels.com/feeds/trends.en.json
++	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.fi.json gs://paranoidmodels.com/feeds/trends.fi.json
++
++.PHONY: news-with-images
++news-with-images: style-check feeds images-duotone publish-feeds images-publish
++	@echo "✓ News (EN/FI), duotone images & feeds published."
++
+*** End Patch
+
+*** Begin Patch
+*** Update File: package.json
+@@
+   "scripts": {
+     "dev": "vite",
+     "build": "vite build",
+     "preview": "vite preview"
+   },
++  "dependencies": {
++    "sharp": "^0.33.3"
++  }
+ }
+*** End Patch
+
+*** Begin Patch
+*** Add File: web/src/config/categories.ts
++export const CATEGORIES = [
++  { key: "geopolitics", label_en: "Geopolitics", label_fi: "Geopolitiikka" },
++  { key: "infoops", label_en: "Information Operations", label_fi: "Informaatio-operaatiot" },
++  { key: "espionage", label_en: "Espionage", label_fi: "Vakoilu" },
++  { key: "highpol", label_en: "High Politics", label_fi: "Korkea politiikka" },
++  { key: "secrethist", label_en: "Secret History", label_fi: "Salainen historia" },
++  { key: "elite", label_en: "Elite Analysis", label_fi: "Eliittianalyysi" }
++];
++
+*** End Patch
+
+*** Begin Patch
+*** Add File: web/src/components/Header.tsx
++import { CATEGORIES } from "@/config/categories";
++import { Link } from "react-router-dom";
++import { useMemo } from "react";
++
++export default function Header({
++  lang,
++  setLang,
++}: {
++  lang: "en" | "fi";
++  setLang: (l: "en" | "fi") => void;
++}) {
++  const labels = useMemo(() => (en: string, fi: string) => (lang === "en" ? en : fi), [lang]);
++  return (
++    <header className="sticky top-0 z-40 backdrop-blur bg-black/40 border-b border-white/10">
++      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
++        <Link to="/" className="font-semibold tracking-wide text-gray-100">
++          PARANOID<span className="text-gray-400">.models</span>
++        </Link>
++        <nav className="hidden md:flex gap-6 text-sm">
++          {CATEGORIES.map((c) => (
++            <a
++              key={c.key}
++              href={`/newswire/${lang}/#${c.key}`}
++              className="text-gray-300 hover:text-white"
++            >
++              {labels(c.label_en, c.label_fi)}
++            </a>
++          ))}
++        </nav>
++        <div className="flex items-center gap-2">
++          <button
++            onClick={() => setLang("en")}
++            className={`px-2 py-1 rounded ${lang === "en" ? "bg-white text-black" : "text-gray-300 hover:text-white"}`}
++          >
++            ENG
++          </button>
++          <button
++            onClick={() => setLang("fi")}
++            className={`px-2 py-1 rounded ${lang === "fi" ? "bg-white text-black" : "text-gray-300 hover:text-white"}`}
++          >
++            FI
++          </button>
++        </div>
++      </div>
++    </header>
++  );
++}
++
+*** End Patch
+
+*** Begin Patch
+*** Update File: web/src/components/NewsCard.tsx
+@@
+-  return (
+-    <article className="rounded-2xl border border-white/10 bg-black/40 p-4">
+-      {/* previous image */}
+-      {/* <img src={card.image} className="w-full h-44 object-cover rounded-xl" /> */}
+-      <h3 className="mt-3 text-[1.05rem] font-semibold tracking-tight text-gray-100">
+-        {card.headline}
+-      </h3>
+-      {/* ... */}
+-    </article>
+-  );
++  // Assume card.image is a base URL without size suffix, e.g.:
++  // https://paranoidmodels.com/newswire/img/card/my-slug
++  const base = (card as any).image?.replace(/(-\d+)?\.(webp|jpg|jpeg|png)$/i, "");
++  return (
++    <article className="rounded-2xl border border-white/10 bg-black/40 p-4 hover:translate-y-0.5 transition-all">
++      {base && (
++        <img
++          loading="lazy"
++          alt={card.headline}
++          className="w-full h-44 object-cover rounded-xl ring-1 ring-white/10"
++          srcSet={`${base}-480.webp 480w, ${base}-768.webp 768w, ${base}-1200.webp 1200w`}
++          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
++          src={`${base}-768.webp`}
++        />
++      )}
++      <h3 className="mt-3 text-[1.05rem] font-semibold tracking-tight text-gray-100">
++        {card.headline}
++      </h3>
++      {/* ...rest of meta/body remains unchanged */}
++    </article>
++  );
+*** End Patch
+
+*** Begin Patch
+*** Update File: web/src/pages/Newswire.tsx
+@@
+-import React, { useEffect, useState } from "react";
++import React, { useEffect, useMemo, useState } from "react";
+ import NewsCard from "@/components/NewsCard";
++import { CATEGORIES } from "@/config/categories";
+@@
+   useEffect(() => {
+     const url = lang === "en" ? "/feeds/trends.en.json" : "/feeds/trends.fi.json";
+     fetch(url).then(r => r.json()).then(setItems).catch(()=>setItems([]));
+   }, [lang]);
+ 
++  const hash = typeof window !== "undefined" ? window.location.hash.replace("#","") : "";
++  const activeKey = useMemo(() => {
++    const ok = CATEGORIES.find(c => c.key === hash)?.key;
++    return ok || "";
++  }, [hash]);
++  const filtered = useMemo(
++    () => (activeKey ? items.filter(i => i?._meta?.category === activeKey) : items),
++    [items, activeKey]
++  );
+@@
+-    <div className="max-w-7xl mx-auto px-4 py-6">
+-      {/* existing header etc. */}
+-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+-        {items.map((card, idx) => <NewsCard key={idx} card={card} />)}
+-      </div>
+-    </div>
++    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0B0F1A] via-black to-black">
++      {/* Header should be included at layout level; if not, import Header here */}
++      <div className="max-w-7xl mx-auto px-4 py-6">
++        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
++          {filtered.map((card, idx) => <NewsCard key={idx} card={card} />)}
++        </div>
++      </div>
++    </div>
+   );
+ }
+*** End Patch

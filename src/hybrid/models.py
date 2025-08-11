@@ -9,7 +9,9 @@ from src.hybrid.budget import (
     record_usage, 
     stats, 
     should_throttle, 
-    hard_cap_hit, 
+    hard_cap_hit,
+    should_daily_throttle,
+    daily_hard_cap_hit,
     push_prom,
     notify_slack
 )
@@ -76,27 +78,43 @@ def run_llm(route, prompt, want_json=True):
     provider = route.get("provider","deepseek")
     original_provider = provider
     
-    # 1) Hard cap → jäädytys / halpa fallback
-    if hard_cap_hit():
-        # pakota deepseek_only tai palauta minimikortti
+    # 1) Daily hard cap → immediate fallback
+    if daily_hard_cap_hit():
         if provider != "deepseek":
             route["provider"] = "deepseek"
-            route["reason"] = "hard_cap_fallback"
+            route["reason"] = "daily_hard_cap_fallback"
             provider = "deepseek"
-            # Notify about hard cap
             s = stats()
-            notify_slack(f"⛔ Hard cap reached: spent €{s['spent']:.2f} / hard €{s['hard']:.2f} — forcing deepseek_only")
+            notify_slack(f"🚫 Daily hard cap hit: €{s['daily_spent']:.2f}/€{s['daily_max']:.2f} today — forcing deepseek")
     
-    # 2) Soft cap → throttle: aggressiivisempi reititys halvempaan
+    # 2) Monthly hard cap → jäädytys / halpa fallback
+    elif hard_cap_hit():
+        if provider != "deepseek":
+            route["provider"] = "deepseek"
+            route["reason"] = "monthly_hard_cap_fallback"
+            provider = "deepseek"
+            s = stats()
+            notify_slack(f"⛔ Monthly hard cap reached: spent €{s['spent']:.2f} / hard €{s['hard']:.2f} — forcing deepseek_only")
+    
+    # 3) Daily soft throttle → careful with premium usage
+    elif should_daily_throttle() and route.get("provider_tag") != "gpt5_cursor_critical":
+        if provider == "gpt5_cursor":
+            route["provider"] = "deepseek"
+            route["reason"] = "daily_soft_throttle"
+            provider = "deepseek"
+            s = stats()
+            if original_provider != provider:
+                notify_slack(f"⚠️ Daily throttle: €{s['daily_spent']:.2f}/€{s['daily_max']:.2f} today — saving premium for critical")
+    
+    # 4) Monthly soft cap → throttle: aggressiivisempi reititys halvempaan
     elif should_throttle() and route.get("provider_tag") != "gpt5_cursor_critical":
         if provider == "gpt5_cursor":
             route["provider"] = "deepseek"
-            route["reason"] = "soft_cap_throttle"
+            route["reason"] = "monthly_soft_throttle"
             provider = "deepseek"
-            # Notify about soft cap throttling
             s = stats()
             if original_provider != provider:
-                notify_slack(f"⚠️ Soft cap reached: spent €{s['spent']:.2f} / €{s['soft']:.2f} — throttling to DeepSeek")
+                notify_slack(f"⚠️ Monthly soft cap: €{s['spent']:.2f} / €{s['soft']:.2f} — throttling to DeepSeek")
 
     # 3) Tee varsinainen LLM-kutsu
     if provider == "deepseek":

@@ -35,7 +35,7 @@ def main():
             "lang": "fi", 
             "country": "FI", 
             "topic": "central_banking", 
-            "source_url": "https://example.fi/a",
+            "source_url": "https://yle.fi/a/central-bank-rates",
             "summary_raw": "Keskuspankki päätti pitää ohjauskoron 4,75 prosentissa inflaation hidastumisen vuoksi."
         },
         {
@@ -43,7 +43,7 @@ def main():
             "lang": "en", 
             "country": "EU", 
             "topic": "central_banking", 
-            "source_url": "https://example.eu/b",
+            "source_url": "https://reuters.com/business/ecb-rates",
             "summary_raw": "European Central Bank officials indicated potential rate reductions in upcoming meetings."
         },
         {
@@ -51,7 +51,7 @@ def main():
             "lang": "en", 
             "country": "US", 
             "topic": "technology", 
-            "source_url": "https://example.com/c",
+            "source_url": "https://techcrunch.com/startup-funding",
             "summary_raw": "Helsinki-based AI company secured €15M in Series A funding for European expansion."
         },
     ]

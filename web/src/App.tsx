@@ -1,24 +1,26 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import NewswirePage from './pages/NewswirePage';
-import NewswirePageFi from './pages/NewswirePageFi';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Layout } from './ui/Layout';
+import TrendsNew from './pages/TrendsNew';
+import Article from './pages/Article';
+
+function TrendsRoute() {
+  const { cat } = useParams();
+  return <TrendsNew category={cat} />;
+}
 
 const App: React.FC = () => {
   return (
     <Router>
-      <Routes>
-        {/* Redirect root to newswire trends */}
-        <Route path="/" element={<Navigate to="/newswire/#trends" replace />} />
-        
-        {/* Finnish newswire page */}
-        <Route path="/newswire/fi" element={<NewswirePageFi />} />
-        
-        {/* Global newswire trends page */}
-        <Route path="/newswire/*" element={<NewswirePage />} />
-        
-        {/* Catch-all redirect to newswire */}
-        <Route path="*" element={<Navigate to="/newswire/#trends" replace />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Navigate to="/en/newswire" replace />} />
+          <Route path="/:lang/newswire" element={<TrendsNew />} />
+          <Route path="/:lang/category/:cat" element={<TrendsRoute />} />
+          <Route path="/:lang/article/:id" element={<Article />} />
+          <Route path="*" element={<Navigate to="/en/newswire" replace />} />
+        </Routes>
+      </Layout>
     </Router>
   );
 };

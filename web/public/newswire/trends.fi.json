@@ -1,0 +1,43 @@
+[
+  {
+    "kicker": "Market Update",
+    "headline": "Suomen Pankki pitää ohjauskoron ennallaan",
+    "lede": "Analysis: Suomen Pankki pitää ohjauskoron ennallaan",
+    "analysis": "Market dynamics suggest institutional involvement. Key beneficiaries include large institutional holders.",
+    "risk_scenario": "Market manipulation could accelerate if regulatory oversight remains limited.",
+    "why_it_matters": "This development affects market dynamics and institutional positioning.",
+    "sources": [
+      "https://yle.fi/a/central-bank-rates",
+      "https://bloomberg.com/markets"
+    ],
+    "lang": "fi",
+    "_meta": {
+      "validation": {
+        "errors": [
+          "missing_or_empty:cta",
+          "missing_or_empty:timestamp"
+        ],
+        "ok": false
+      },
+      "routing": {
+        "provider": "deepseek",
+        "reason": "daily_hard_cap_deepseek",
+        "risk_score": 0.3,
+        "complexity": 0.3
+      }
+    },
+    "id": "02eb4753f504",
+    "image": {
+      "hero": "https://storage.googleapis.com/paranoidmodels.com/newswire/img/hero/02eb4753f504.jpg",
+      "card": "https://storage.googleapis.com/paranoidmodels.com/newswire/img/card/02eb4753f504.jpg",
+      "thumb": "https://storage.googleapis.com/paranoidmodels.com/newswire/img/thumb/02eb4753f504.jpg",
+      "attribution": {
+        "author": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Lawrence_Jackson_(photographer)\" class=\"extiw\" title=\"w:en:Lawrence Jackson (photographer)\"><span title=\"American photographer\">Lawrence Jackson</span></a></bdi>",
+        "source_url": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Kamala_Harris_meeting_with_small_business_owners_-_2021-01-22.jpg",
+        "license": "Public domain",
+        "license_url": ""
+      }
+    },
+    "og_image": "https://storage.googleapis.com/paranoidmodels.com/newswire/og/02eb4753f504.png"
+  }
+]

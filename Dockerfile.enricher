@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# OS deps + Google Cloud SDK (for gsutil)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates gnupg \
+  && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list \
+  && curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+  && apt-get update && apt-get install -y --no-install-recommends google-cloud-sdk \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps (use repo's requirement files if present)
+COPY requirements*.txt ./
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    if [ -f requirements-api.txt ]; then pip install -r requirements-api.txt; fi && \
+    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+# Copy code
+COPY . .
+
+# Default command (job may override via --command/--args)
+CMD ["python3", "scripts/test_hybrid_enrich.py"]
+
+
