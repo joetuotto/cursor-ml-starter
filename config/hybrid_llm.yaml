@@ -1,0 +1,76 @@
+# Hybrid LLM Configuration for PARANOID
+# Budget: €30/month optimized allocation
+
+models:
+  deepseek:
+    provider: "deepseek"
+    model_name: "deepseek-r1"
+    api_base: "https://api.deepseek.com/v1"
+    cost_per_input_token: 0.55   # USD per 1M tokens
+    cost_per_output_token: 2.19  # USD per 1M tokens
+    max_tokens: 1500
+    temperature: 0.3
+    monthly_budget_usd: 22.0     # €20 ≈ $22
+    use_cases:
+      - "volume_content"
+      - "basic_enrichment"
+      - "category_detection"
+      - "standard_analysis"
+
+  gpt5:
+    provider: "cursor"
+    model_name: "gpt-5"
+    api_base: "https://api.cursor.sh/v1"
+    cost_per_input_token: 1.25   # USD per 1M tokens  
+    cost_per_output_token: 10.0  # USD per 1M tokens
+    max_tokens: 2500
+    temperature: 0.3
+    monthly_budget_usd: 11.0     # €10 ≈ $11
+    use_cases:
+      - "finnish_content"
+      - "critical_analysis"
+      - "quality_control"
+      - "complex_financial"
+
+routing_rules:
+  # Critical content (always GPT-5 if budget allows)
+  critical_keywords:
+    - "federal reserve"
+    - "ecb"
+    - "suomen pankki"
+    - "interest rate"
+    - "recession"
+    - "crisis"
+    - "bankruptcy"
+    - "korko"
+    - "inflaatio"
+
+  # Finnish content routing
+  finnish_to_gpt5: true
+  
+  # Complex financial content
+  complex_categories:
+    - "talous"
+    - "finance" 
+    - "yritykset"
+    - "markkinat"
+
+  # Quality control settings
+  quality_control:
+    enabled: true
+    deepseek_output_validation: true
+    gpt5_improvement_threshold: 0.7
+
+cost_management:
+  monthly_budget_usd: 33.0       # €30 ≈ $33
+  alert_threshold: 0.8           # Alert at 80% budget
+  emergency_mode_threshold: 0.95 # Switch to cheapest model at 95%
+  cost_tracking_file: "artifacts/monthly_budget.json"
+
+# Expected monthly volume with €30 budget:
+capacity_estimates:
+  deepseek_articles: 800-1200    # ~1000 articles/month
+  gpt5_articles: 80-120          # ~100 articles/month  
+  total_articles: 1000-1300      # Mixed routing
+  finnish_articles: 100-150      # All via GPT-5
+  quality_controlled: 300-500    # DeepSeek + GPT-5 QC
