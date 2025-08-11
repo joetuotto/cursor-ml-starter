@@ -255,31 +255,35 @@ fi-full:
 	make fi-enrich  
 	make fi-validate
 
-# Hybrid LLM System (DeepSeek + GPT-5)
-hybrid-enrich:
-	@echo "🤖 Hybrid enrichment: DeepSeek + GPT-5"
+# Original hybrid system (for reference)
+hybrid-enrich-orig:
+	@echo "🤖 Original hybrid enrichment: DeepSeek + GPT-5"
 	python -m src.paranoid_model.hybrid_llm --signal artifacts/signal.fi.json --schema artifacts/newswire_schema.json --output artifacts/report.hybrid.json
 
-hybrid-cost:
-	@echo "💰 Monthly cost summary:"
-	python -m src.paranoid_model.hybrid_llm --cost-summary
+hybrid-fi-orig:
+	@echo "🇫🇮 Finnish content with original hybrid routing"
+	make fi-ingest
+	make hybrid-enrich-orig
+	make fi-validate
+
+# Drop-in Hybrid System
+.PHONY: hybrid-setup hybrid-test hybrid-run hybrid-cost
 
 hybrid-setup:
-	@echo "⚙️  Setting up hybrid LLM environment..."
-	@echo "1. Set DEEPSEEK_API_KEY in your environment"
-	@echo "2. Set CURSOR_API_KEY in your environment"
-	@echo "3. Budget: €30/month = €20 DeepSeek + €10 GPT-5"
-	@echo "4. Expected volume: ~1000 articles/month mixed routing"
+	@python3 -c "import os, pathlib; pathlib.Path('.cache/hybrid').mkdir(parents=True, exist_ok=True)"
+	@[ -f .env ] || cp env.example .env || echo "📝 Copy env.example to .env and fill in API keys"
+	@echo "✅ Hybrid setup ready"
 
 hybrid-test:
-	@echo "🧪 Testing hybrid routing..."
-	@python -c "from src.paranoid_model.hybrid_llm import HybridEnricher, ContentRouter, CostTracker; import json; tracker = CostTracker(); router = ContentRouter(tracker); test_signals = [{'title': 'Suomen Pankki nostaa korkoja', 'origin_country': 'FI', 'category_guess': 'talous'}, {'title': 'Federal Reserve signals rate pause', 'origin_country': 'US', 'category_guess': 'finance'}, {'title': 'Tech startup raises funding', 'origin_country': 'US', 'category_guess': 'technology'}]; [print(f'📰 \"{signal[\"title\"][:40]}...\" → {router.route_content(signal).value}') for signal in test_signals]; enricher = HybridEnricher(); summary = enricher.get_cost_summary(); print('\n💰 Current usage:'); [print(f'   {provider}: \${data[\"cost\"]:.2f}/\${data[\"budget\"]:.2f} ({data[\"utilization\"]*100:.1f}%)') for provider, data in summary['providers'].items()]"
+	@python3 scripts/hybrid_test.py
 
-hybrid-fi:
-	@echo "🇫🇮 Finnish content with hybrid routing"
-	make fi-ingest
-	make hybrid-enrich
-	make fi-validate
+hybrid-run:
+	@echo "🚀 Running hybrid batch processing..."
+	@python3 scripts/hybrid_test.py
+	@echo "✅ Hybrid batch → artifacts/report.enriched.json"
+
+hybrid-cost:
+	@python3 scripts/hybrid_budget.py
 
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"

@@ -1,0 +1,30 @@
+routing:
+  force_gpt5_languages: ["fi"]
+  critical_topics:
+    - federal reserve
+    - ecb
+    - suomen pankki
+    - keskuspankki
+    - interest rate
+    - korko
+  complexity_threshold: 0.50
+  risk_threshold: 0.40
+  min_source_trust_for_llm: 0.20
+
+budget:
+  currency: EUR
+  deepseek_monthly: 20
+  gpt5_monthly: 10
+
+quality:
+  min_cards_with_why_it_matters: 0.80
+  require_sources_min: 2
+  max_cards_per_batch: 100
+
+cache:
+  dir: ".cache/hybrid"
+  ttl_hours: 72
+  prompt_version: "v1"
+
+output:
+  newswire: "artifacts/report.enriched.json"

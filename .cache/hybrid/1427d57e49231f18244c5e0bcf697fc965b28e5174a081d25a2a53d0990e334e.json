@@ -1,0 +1,17 @@
+{
+  "kicker": "Paranoid Analysis",
+  "headline": "Suomen Pankki nostaa ohjauskorkoa 25bp",
+  "lede": "[GPT5] Suomen Pankki nostaa ohjauskorkoa 25bp",
+  "why_it_matters": "Miksi tämä on tärkeää: tarkka vaikutus lukijalle.",
+  "cta": {
+    "href": "#",
+    "label": "Lähde"
+  },
+  "timestamp": null,
+  "category": "premium",
+  "model": "gpt5",
+  "sources": [],
+  "confidence": 0.86,
+  "lang": "fi",
+  "country": "FI"
+}
