@@ -1,3 +1,17 @@
+# Optional: Run Grafana locally with provisioning
+.PHONY: grafana-up
+
+grafana-up:
+	@docker run --rm -d --name grafana \
+		-p 3000:3000 \
+		-e GF_SECURITY_ADMIN_USER=admin \
+		-e GF_SECURITY_ADMIN_PASSWORD=admin \
+		-e GF_PATHS_PROVISIONING=/etc/grafana/provisioning \
+		-v $$(pwd)/monitoring/provisioning/datasources:/etc/grafana/provisioning/datasources \
+		-v $$(pwd)/monitoring/provisioning/dashboards:/etc/grafana/provisioning/dashboards \
+		-v $$(pwd)/monitoring/dashboards:/app/monitoring/dashboards \
+		grafana/grafana:latest
+	@echo "Grafana ↗ http://localhost:3000  (admin/admin)"
 # ===== PARANOID MODEL V5 =====
 .PHONY: paranoid-setup paranoid-train paranoid-signal paranoid-enrich paranoid-pipeline
 
@@ -363,6 +377,22 @@ enrich-hybrid:
 	@echo "👉 Running hybrid enrichment → artifacts/report.enriched.json"
 	@python3 scripts/test_hybrid_enrich.py
 
+# Budget Management
+.PHONY: budget-status budget-reset budget-test budget-prom
+
+budget-status:
+	@python3 -c "import sys; sys.path.append('.'); from src.hybrid.budget import stats; print('💰 Budget Status:', stats())"
+
+budget-reset:
+	@rm -f artifacts/billing/costs.jsonl && echo "✅ Budget reset - costs cleared"
+
+budget-test:
+	@echo "🧪 Testing budget tracking..."
+	@python3 -c "import sys; sys.path.append('.'); from src.hybrid.budget import record_usage, stats; print('Before:', stats()); [record_usage('gpt5_cursor', 1500, 800, eur=0.02, meta={'test':True}) for i in range(5)]; print('After 5 GPT-5 calls:', stats())"
+
+budget-prom:
+	@python3 -c "import sys; sys.path.append('.'); from src.hybrid.budget import push_prom; push_prom(); print('📊 Pushed metrics to Prometheus (if PROMETHEUS_PUSHGATEWAY_URL set)')"
+
 paranoid-ultimate: paranoid-complete paranoid-prometheus paranoid-deploy paranoid-report
 	@echo "🏢 ULTIMATE PARANOID ENTERPRISE PIPELINE COMPLETE!"
 	@echo "📊 Metrics exported to Prometheus"
@@ -420,6 +450,23 @@ paranoid-check-prometheus-rules:
 	else \
 		echo "⚠️ promtool not found - install Prometheus toolkit"; \
 	fi
+
+.PHONY: prod-go-live
+prod-go-live:
+	@echo "\n🚀 PROD GO-LIVE: smoke → deploy → health → metrics → alert sanity"
+	@echo "🔧 LLM smoke..."
+	@$(MAKE) hybrid-cursor-test
+	@$(MAKE) hybrid-run-enhanced
+	@echo "📦 Deploying API image..."
+	@IMAGE=$${IMAGE:-gcr.io/$${PROJECT_ID}/paranoid-api:$$(date +%Y%m%d%H%M)} $(MAKE) deploy-paranoid-with-image
+	@echo "🏥 Production checks..."
+	@$(MAKE) paranoid-production-check || true
+	@echo "📊 Pushing metrics..."
+	@$(MAKE) budget-prom
+	@$(MAKE) budget-prom-daily
+	@echo "🚨 Alert sanity (AUC drop)..."
+	@$(MAKE) paranoid-test-alert-auc || true
+	@echo "✅ prod-go-live complete"
 
 # ===== GO-LIVE SEQUENCE =====
 

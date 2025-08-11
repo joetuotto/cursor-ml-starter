@@ -10,9 +10,20 @@ from pathlib import Path
 from datetime import datetime
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent.parent))
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
 
-from src.paranoid_model.publisher_llm import enrich_with_hybrid
+# Import enrich function
+try:
+    from src.paranoid_model.publisher_llm import enrich_with_hybrid
+except ImportError as e:
+    print(f"❌ Import error: {e}")
+    print("Trying alternative import path...")
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("publisher_llm", project_root / "src" / "paranoid_model" / "publisher_llm.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    enrich_with_hybrid = module.enrich_with_hybrid
 
 def main():
     """Test hybrid enrichment with sample data"""

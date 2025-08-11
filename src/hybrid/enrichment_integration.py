@@ -15,6 +15,24 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 from src.hybrid.llm_clients import DeepSeekClient, GPT5Client, LLMResponse
+try:
+    from src.hybrid.budget import (
+        record_usage as _budget_record_usage,
+        estimate_cost_eur as _budget_estimate_cost,
+        push_prom as _budget_push_prom,
+        stats as _budget_stats,
+        should_throttle as _budget_should_throttle,
+        hard_cap_hit as _budget_hard_cap_hit,
+        should_daily_throttle as _budget_should_daily_throttle,
+        daily_hard_cap_hit as _budget_daily_hard_cap_hit,
+    )
+except Exception:
+    _budget_record_usage = None
+    _budget_estimate_cost = None
+    _budget_push_prom = None
+    _budget_stats = None
+    _budget_should_throttle = None
+    _budget_hard_cap_hit = None
 from src.hybrid.router import SelfLearningRouter, Item
 
 
@@ -95,6 +113,24 @@ class HybridEnrichmentClient:
                 for topic in ['ecb', 'fed', 'central bank', 'keskuspankki'])
         )
         
+        # Budget-aware routing adjustments
+        try:
+            if _budget_daily_hard_cap_hit and _budget_daily_hard_cap_hit():
+                use_gpt5 = False
+            elif _budget_should_daily_throttle and _budget_should_daily_throttle():
+                critical = lang == 'fi' or any(topic in raw_signal.get('title','').lower() for topic in ['ecb','fed','central bank','keskuspankki'])
+                if not critical:
+                    use_gpt5 = False
+            elif _budget_hard_cap_hit and _budget_hard_cap_hit():
+                use_gpt5 = False
+            elif _budget_should_throttle and _budget_should_throttle():
+                # keep GPT-5 for Finnish/critical topics only
+                critical = lang == 'fi' or any(topic in raw_signal.get('title','').lower() for topic in ['ecb','fed','central bank','keskuspankki'])
+                if not critical:
+                    use_gpt5 = False
+        except Exception:
+            pass
+
         client = self.gpt5_client if use_gpt5 else self.deepseek_client
         
         # Build prompts
@@ -120,6 +156,16 @@ class HybridEnrichmentClient:
                 'routed_to': 'gpt5' if use_gpt5 else 'deepseek'
             }
             
+            # Log budget usage
+            try:
+                if _budget_record_usage is not None:
+                    prov = 'gpt5_cursor' if use_gpt5 else 'deepseek'
+                    _budget_record_usage(prov, meta.prompt_tokens, meta.completion_tokens, meta.cost_eur, meta={"routed_to": prov})
+                    if _budget_push_prom is not None:
+                        _budget_push_prom()
+            except Exception:
+                pass
+
             return result
             
         except Exception as e:

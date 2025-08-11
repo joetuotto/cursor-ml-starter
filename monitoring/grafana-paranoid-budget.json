@@ -1,0 +1,98 @@
+{
+  "title": "Paranoid Budget & Throttling",
+  "uid": "paranoid-budget",
+  "timezone": "browser",
+  "tags": ["paranoid", "budget", "ops"],
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "gauge",
+      "title": "Today spend (EUR)",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 5},
+              {"color": "red", "value": 7}
+            ]
+          },
+          "unit": "currency:EUR"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "targets": [{"expr": "paranoid_budget_spent_today_eur{env=\"prod\"}"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Today spend (EUR) – last 24h",
+      "gridPos": {"h": 8, "w": 18, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "currency:EUR"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
+      "targets": [{"expr": "paranoid_budget_spent_today_eur{env=\"prod\"}"}]
+    },
+    {
+      "type": "stat",
+      "title": "Month spend (EUR)",
+      "gridPos": {"h": 6, "w": 4, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "currency:EUR"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"},
+      "targets": [{"expr": "paranoid_budget_spent_month_eur{env=\"prod\"}"}]
+    },
+    {
+      "type": "stat",
+      "title": "Requests throttled (today)",
+      "gridPos": {"h": 6, "w": 4, "x": 4, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["sum"]}, "colorMode": "value"},
+      "targets": [{"expr": "increase(paranoid_requests_throttled_total{env=\"prod\"}[24h])"}]
+    },
+    {
+      "type": "bargauge",
+      "title": "Provider split (today)",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"displayMode": "gradient", "minVizHeight": 10},
+      "targets": [
+        {"expr": "increase(paranoid_provider_requests_total{env=\"prod\",provider=\"gpt5_cursor\"}[24h])", "legendFormat": "gpt5_cursor"},
+        {"expr": "increase(paranoid_provider_requests_total{env=\"prod\",provider=\"deepseek\"}[24h])", "legendFormat": "deepseek"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Daily soft cap reached?",
+      "gridPos": {"h": 6, "w": 4, "x": 16, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "No"}, "1": {"text": "Yes"}}}]}, "overrides": []},
+      "targets": [{"expr": "paranoid_daily_soft_cap_hit{env=\"prod\"}"}]
+    },
+    {
+      "type": "stat",
+      "title": "Daily HARD cap hit?",
+      "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "No"}, "1": {"text": "Yes"}}}]}, "overrides": []},
+      "targets": [{"expr": "paranoid_daily_hard_cap_hit{env=\"prod\"}"}]
+    }
+  ],
+  "templating": {"list": []}
+}
+
+

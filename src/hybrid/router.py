@@ -18,28 +18,46 @@ def _contains_critical_topic(text: str, critical: list[str]) -> bool:
     t = text.lower()
     return any(k in t for k in critical)
 
-def route(item: Item, cfg) -> str:
-    """Legacy routing function - use SelfLearningRouter for production"""
+def route(item: Item, cfg) -> Dict[str, Any]:
+    """Enhanced routing function with critical flag support"""
     # Drop to validation if very low trust or clear duplicate will be handled elsewhere
     if item.source_trust < cfg["routing"]["min_source_trust_for_llm"]:
-        return "validate_only"
+        return {"provider": "validate_only", "reason": "low_trust", "critical": False}
+
+    is_finnish = item.lang.lower() in cfg["routing"]["force_gpt5_languages"]
+    is_critical_topic = _contains_critical_topic(f"{item.title} {item.text}", cfg["routing"]["critical_topics"])
+    is_complex = item.complexity >= cfg["routing"]["complexity_threshold"]
+    is_risky = item.risk >= cfg["routing"]["risk_threshold"]
 
     # Always GPT-5 for Finnish or configured languages (local nuance)
-    if item.lang.lower() in cfg["routing"]["force_gpt5_languages"]:
-        return "gpt5"
+    if is_finnish:
+        return {
+            "provider": "gpt5_cursor", 
+            "reason": "finnish_content", 
+            "critical": True,
+            "provider_tag": "gpt5_cursor_critical"
+        }
 
     # Critical macro/finance → GPT-5
-    if _contains_critical_topic(f"{item.title} {item.text}", cfg["routing"]["critical_topics"]):
-        return "gpt5"
+    if is_critical_topic:
+        return {
+            "provider": "gpt5_cursor", 
+            "reason": "critical_topic", 
+            "critical": True,
+            "provider_tag": "gpt5_cursor_critical"
+        }
 
-    # Complex or risky → GPT-5
-    if item.complexity >= cfg["routing"]["complexity_threshold"]:
-        return "gpt5"
-    if item.risk >= cfg["routing"]["risk_threshold"]:
-        return "gpt5"
+    # Complex or risky → GPT-5 (but not critical - can be throttled)
+    if is_complex or is_risky:
+        return {
+            "provider": "gpt5_cursor", 
+            "reason": "complex_or_risky", 
+            "critical": False,
+            "provider_tag": "gpt5_cursor"
+        }
 
     # Default: DeepSeek (volume work)
-    return "deepseek"
+    return {"provider": "deepseek", "reason": "volume_work", "critical": False}
 
 
 class SelfLearningRouter:
@@ -138,13 +156,28 @@ class SelfLearningRouter:
     
     def _apply_budget_constraints(self, model: str, context: Dict[str, Any]) -> str:
         """Apply budget-based routing constraints"""
-        
-        # Check if we should use GPT-5 based on budget
+        try:
+            from .budget import hard_cap_hit, should_throttle, daily_hard_cap_hit, should_daily_throttle
+        except Exception:
+            hard_cap_hit = lambda: False  # type: ignore
+            should_throttle = lambda: False  # type: ignore
+            daily_hard_cap_hit = lambda: False  # type: ignore
+            should_daily_throttle = lambda: False  # type: ignore
+
         if model == "gpt5":
-            use_gpt5 = self.budget_calibrator.should_use_gpt5(True, context)
-            if not use_gpt5:
+            if daily_hard_cap_hit():
                 return "deepseek"
-        
+            if should_daily_throttle():
+                is_critical = context.get("lang", "").lower() == "fi" or context.get("topic") in ("central_banking",)
+                if not is_critical:
+                    return "deepseek"
+            if hard_cap_hit():
+                return "deepseek"
+            if should_throttle():
+                # allow critical Finnish content to remain on GPT-5
+                is_critical = context.get("lang", "").lower() == "fi" or context.get("topic") in ("central_banking",)
+                if not is_critical:
+                    return "deepseek"
         return model
     
     def _process_with_model(self, item: Item, model: str, prompt_template: str) -> Dict[str, Any]:

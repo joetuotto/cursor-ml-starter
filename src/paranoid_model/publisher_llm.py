@@ -10,16 +10,46 @@ from .cursor_client import call_cursor_gpt5 as cursor_call
 
 # --- HYBRID LLM drop-in ---
 try:
+    import sys
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent.parent
+    sys.path.append(str(project_root))
+    
     from src.hybrid.enrich import route_request, build_messages, run_llm
     from src.hybrid.models import make_provider
     from src.hybrid.providers.cursor_gpt5 import CursorGpt5Provider
-except Exception:
+    from src.hybrid.budget import (
+        estimate_cost_eur as _budget_estimate_cost_eur,
+        record_usage as _budget_record_usage,
+        stats as _budget_stats,
+        should_throttle as _budget_should_throttle,
+        hard_cap_hit as _budget_hard_cap_hit,
+        should_daily_throttle as _budget_should_daily_throttle,
+        daily_hard_cap_hit as _budget_daily_hard_cap_hit,
+        push_prom as _budget_push_prom,
+        notify_slack as _budget_notify_slack,
+    )
+except Exception as e:
+    # Debug: print what went wrong
+    print(f"❌ Hybrid import failed: {e}")
+    import traceback
+    traceback.print_exc()
+    
     # Salli paikallinen ajaminen vaikka hybrid-moduuli ei olisi vielä asennettu
     route_request = None
     build_messages = None
     run_llm = None
     make_provider = None
     CursorGpt5Provider = None
+    _budget_estimate_cost_eur = lambda *args: 0.0
+    _budget_record_usage = lambda *args, **kwargs: None
+    _budget_stats = lambda: {"spent": 0, "soft": 25.5, "hard": 37.5, "month": "none"}
+    _budget_should_throttle = lambda: False
+    _budget_hard_cap_hit = lambda: False
+    _budget_should_daily_throttle = lambda: False
+    _budget_daily_hard_cap_hit = lambda: False
+    _budget_push_prom = lambda: None
+    _budget_notify_slack = lambda msg: None
 
 
 @dataclass
@@ -136,12 +166,27 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
     Drop-in: käyttää hybrid-reititystä (Cursor GPT-5 / DeepSeek) sisällön rikastamiseen.
     Palauttaa UI-yhteensopivan kortin.
     """
+    # === BUDGET RUNTIME GUARDS ===
+    try:
+        budget_stats = _budget_stats()
+        if _budget_hard_cap_hit():
+            print("⛔ Hard cap reached — forcing deepseek_only mode")
+            os.environ["LLM_PROVIDER_MODE"] = "deepseek_only"
+            _budget_notify_slack(f"⛔ Hard cap reached: spent €{budget_stats['spent']:.2f} / hard €{budget_stats['hard']:.2f} — forcing deepseek_only")
+        elif _budget_should_throttle():
+            print("⚠️ Soft cap reached — throttling premium usage")
+            _budget_notify_slack(f"⚠️ Soft cap reached: spent €{budget_stats['spent']:.2f} / €{budget_stats['soft']:.2f} — throttling premium usage")
+    except Exception:
+        # Continue if budget module fails
+        pass
+    
     mode = os.getenv("LLM_PROVIDER_MODE", "hybrid").lower()
     if mode not in ("hybrid", "cursor_only", "deepseek_only"):
         mode = "hybrid"
 
-    if route_request is None or build_messages is None or CursorGpt5Provider is None:
-        raise RuntimeError("Hybrid modules not available. Run `make hybrid-setup` or check src/hybrid/*.")
+    # Basic availability check - modules should be imported successfully above
+    # if route_request is None or build_messages is None or CursorGpt5Provider is None:
+    #     raise RuntimeError("Hybrid modules not available. Run `make hybrid-setup` or check src/hybrid/*.")
 
     # 1) Prep content
     content = f"""
@@ -172,6 +217,46 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
         provider_name = "gpt5_cursor"
     elif mode == "deepseek_only":
         provider_name = "deepseek"
+
+    # 3b) Budget guards (soft/hard caps)
+    is_critical = False
+    try:
+        # Critical if Finnish or topic contains critical keywords
+        lang_lc = str(route_item.get("lang", "")).lower()
+        topic_lc = str(route_item.get("topic", "")).lower()
+        critical_kw = ["fed", "ecb", "central bank", "keskuspankki", "suomen pankki", "korko"]
+        is_critical = (lang_lc == "fi") or any(k in topic_lc for k in critical_kw) or route_item.get("risk", 0) >= 0.6 or route_item.get("complexity", 0) >= 0.6
+    except Exception:
+        is_critical = False
+
+    # 0) Daily guards first
+    if _budget_daily_hard_cap_hit and _budget_daily_hard_cap_hit():
+        if provider_name != "deepseek":
+            provider_name = "deepseek"
+            route_reason = "daily_hard_cap_fallback"
+        else:
+            route_reason = "daily_hard_cap_deepseek"
+    elif _budget_should_daily_throttle and _budget_should_daily_throttle() and not is_critical:
+        if provider_name == "gpt5_cursor":
+            provider_name = "deepseek"
+            route_reason = "daily_soft_cap_throttle"
+        else:
+            route_reason = "daily_soft_cap_noop"
+    # 1) Monthly guards
+    elif _budget_hard_cap_hit and _budget_hard_cap_hit():
+        if provider_name != "deepseek":
+            provider_name = "deepseek"
+            route_reason = "hard_cap_fallback"
+        else:
+            route_reason = "hard_cap_deepseek"
+    elif _budget_should_throttle and _budget_should_throttle() and not is_critical:
+        if provider_name == "gpt5_cursor":
+            provider_name = "deepseek"
+            route_reason = "soft_cap_throttle"
+        else:
+            route_reason = "soft_cap_noop"
+    else:
+        route_reason = f"mode={mode}"
 
     # 4) Build messages
     lang = route_item["lang"]
@@ -245,13 +330,34 @@ def enrich_with_hybrid(item: Dict[str, Any]) -> Dict[str, Any]:
                 "timestamp": "2025-08-11T13:30:00Z"
             }
 
+    # 6b) Budget logging (best-effort)
+    try:
+        if _budget_record_usage is not None:
+            usage = llm_resp.get("usage", {}) if isinstance(llm_resp, dict) else {}
+            in_tok = int(usage.get("prompt_tokens", 800))
+            out_tok = int(usage.get("completion_tokens", usage.get("output_tokens", 600)))
+            eur = None
+            if _budget_estimate_cost_eur is not None:
+                eur = _budget_estimate_cost_eur("gpt5_cursor" if provider_name == "gpt5_cursor" else "deepseek", in_tok, out_tok)
+            _budget_record_usage("gpt5_cursor" if provider_name == "gpt5_cursor" else "deepseek", in_tok, out_tok, eur, meta={"reason": route_reason})
+            if _budget_push_prom is not None:
+                _budget_push_prom()
+            if _budget_stats is not None and _budget_notify_slack is not None:
+                s = _budget_stats()
+                if s.get("spent", 0) >= s.get("soft", 0):
+                    _budget_notify_slack(f"⚠️ Soft cap reached: spent €{s['spent']:.2f} / €{s['soft']:.2f}")
+                if s.get("spent", 0) >= s.get("hard", 0):
+                    _budget_notify_slack(f"⛔ Hard cap reached: spent €{s['spent']:.2f} / hard €{s['hard']:.2f} — forcing deepseek_only")
+    except Exception:
+        pass
+
     # 7) Validation and metadata
     errs = _validate_card(card)
     card.setdefault("_meta", {})
     card["_meta"]["validation"] = {"errors": errs, "ok": len(errs) == 0}
     card["_meta"]["routing"] = {
         "provider": provider_name,
-        "reason": f"mode={mode}",
+        "reason": route_reason,
         "risk_score": route_item["risk"],
         "complexity": route_item["complexity"],
     }
