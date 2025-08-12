@@ -93,7 +93,9 @@ jobs:
       - name: Validate (Hersh + Dark tolerance)
         run: |
           make style-check
+          python3 scripts/normalize_enriched.py || true
           make feeds
+          python3 scripts/validate_trends.py || true
           make validate-news
 
       - name: Build duotone images
