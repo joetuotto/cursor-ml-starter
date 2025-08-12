@@ -55,6 +55,9 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
   --role="roles/storage.objectAdmin" \
   --project="${NEW_PROJECT_ID}" || true
 
+echo "[INFO] Making bucket contents publicly readable..."
+gsutil iam ch allUsers:objectViewer "gs://${BUCKET}" || true
+
 echo "[INFO] Creating JSON key..."
 mkdir -p "$(dirname "${KEY_PATH}")"
 if [[ ! -f "${KEY_PATH}" ]]; then
