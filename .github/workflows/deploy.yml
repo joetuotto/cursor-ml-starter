@@ -29,6 +29,7 @@ jobs:
       - name: Validate (Hersh + Dark tolerance)
         run: |
           make style-check
+          python3 scripts/normalize_enriched.py || true
           make feeds
           make validate-news
 
