@@ -14,9 +14,28 @@ def main() -> None:
         return
 
     data = json.loads(ENRICHED.read_text())
-    items = data.get("items", data if isinstance(data, list) else [data])
+
+    # Robustly derive items and remember original shape
+    output_is_dict = False
+    if isinstance(data, dict):
+        if isinstance(data.get("items"), list):
+            items = list(data["items"])  # shallow copy
+            output_is_dict = True
+        else:
+            items = [data]
+            output_is_dict = False
+    elif isinstance(data, list):
+        items = list(data)
+        output_is_dict = False
+    else:
+        print(f"[normalize] unsupported data shape: {type(data)} — skipping")
+        return
 
     for item in items:
+        # Defensive: coerce to dict if somehow not
+        if not isinstance(item, dict):
+            continue
+
         lang = ensure_text(item.get("lang")).lower()
 
         # Build blob for checks
@@ -42,8 +61,7 @@ def main() -> None:
         # why_it_matters fallback
         if not ensure_text(item.get("why_it_matters")):
             item["why_it_matters"] = (
-                "Miksi tämä on tärkeää: kehitys vaikuttaa toimialan kannattavuuteen, regulaatioriskeihin ja kilpailuun; "
-                "vaikutusten ennakointi luo etua."
+                "Miksi tämä on tärkeää: kehitys vaikuttaa toimialan kannattavuuteen, regulaatioriskeihin ja kilpailuun; vaikutusten ennakointi luo etua."
                 if lang == "fi"
                 else "Why it matters: impacts profitability, regulatory exposure and competition; anticipating effects creates advantage."
             )
@@ -80,7 +98,7 @@ def main() -> None:
             item["image_base"] = "https://paranoidmodels.com/newswire/img/card/placeholder.jpg"
 
     # Write back preserving original shape
-    out = {"items": items} if isinstance(data, dict) and "items" in data else items
+    out = {"items": items} if output_is_dict else items
     ENRICHED.write_text(json.dumps(out, ensure_ascii=False, indent=2))
     print(f"[normalize] normalized {len(items)} item(s) in {ENRICHED}")
 

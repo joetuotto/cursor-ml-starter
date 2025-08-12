@@ -95,6 +95,24 @@ jobs:
           make style-check
           python3 scripts/normalize_enriched.py || true
           make feeds
+          echo "::group::Feed sample (prod)"
+          if command -v jq >/dev/null 2>&1; then
+            echo "EN first:" && jq -c '.[0]' artifacts/feeds/trends.en.json || true
+            echo "FI first:" && jq -c '.[0]' artifacts/feeds/trends.fi.json || true
+          else
+            python - <<'PY' || true
+import json
+from pathlib import Path
+for p in [Path('artifacts/feeds/trends.en.json'), Path('artifacts/feeds/trends.fi.json')]:
+    if p.exists():
+        try:
+            data=json.loads(p.read_text())
+            print(f"{p.name} first={json.dumps(data[0]) if data else '[]'}")
+        except Exception as e:
+            print(f"{p}: error {e}")
+PY
+          fi
+          echo "::endgroup::"
           python3 scripts/validate_trends.py || true
           make validate-news
 
