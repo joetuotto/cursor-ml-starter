@@ -71,6 +71,11 @@ jobs:
           chmod +x scripts/deploy_cloud_run.sh
           ./scripts/deploy_cloud_run.sh
 
+      - name: Normalize + build feeds
+        run: |
+          python3 scripts/normalize_enriched.py || true
+          python3 scripts/build_trends_feeds.py || true
+
       - name: Smoke test (prod)
         run: |
           chmod +x scripts/smoke.sh
