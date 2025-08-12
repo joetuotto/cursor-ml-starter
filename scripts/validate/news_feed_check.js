@@ -15,6 +15,7 @@ const DEFAULT_FEEDS = [
 const ALLOWED_CATEGORIES = new Set([
   'geopolitics', 'infoops', 'espionage', 'highpol', 'secrethist', 'elite', 'general'
 ]);
+const ALLOWED_LANG = new Set(['en','fi']);
 
 const BANNED_PHRASES = [
   'why it matters:',
@@ -92,6 +93,12 @@ async function validateCard(card, idx, langHint) {
   if (!category) issues.push('missing:_meta.category');
   else if (!ALLOWED_CATEGORIES.has(String(category))) issues.push(`invalid_category:${category}`);
 
+  // Language must be explicit and match feed
+  const lang = card?.lang;
+  if (!lang) issues.push('missing:lang');
+  else if (!ALLOWED_LANG.has(String(lang))) issues.push(`invalid_lang:${lang}`);
+  else if (lang !== langHint) warn.push(`lang_mismatch_feed:${lang}!=${langHint}`);
+
   // Refs (accept refs or sources fallback)
   let refs = card?.refs || card?._meta?.refs;
   if (!Array.isArray(refs) || !refs.length) {
@@ -104,7 +111,7 @@ async function validateCard(card, idx, langHint) {
   if (!urlish) warn.push('refs_without_url_like_entries');
 
   // Image checks: accept base string or image object
-  let imgBase = card?.image || card?._meta?.image;
+  let imgBase = card?._meta?.image_base || card?.image || card?._meta?.image;
   if (imgBase && typeof imgBase === 'object') {
     imgBase = imgBase.card || imgBase.hero || imgBase.thumb || '';
   }

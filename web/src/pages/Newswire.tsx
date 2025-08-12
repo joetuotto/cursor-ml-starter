@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import NewsCard from "@/components/NewsCard";
 import { CATEGORIES } from "@/config/categories";
+import Header from "@/components/Header";
 
 export default function Newswire() {
   const [lang, setLang] = useState<"en" | "fi">("en");
@@ -23,9 +24,10 @@ export default function Newswire() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0B0F1A] via-black to-black">
+      <Header lang={lang} onLangChange={setLang} />
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((card, idx) => <NewsCard key={idx} card={card} />)}
+          {filtered.map((item, idx) => <NewsCard key={idx} item={item} />)}
         </div>
       </div>
     </div>

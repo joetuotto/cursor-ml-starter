@@ -7,6 +7,7 @@ const FEEDS_DIR = 'artifacts/feeds';
 const FILES = ['trends.en.json', 'trends.fi.json'];
 const DEFAULT_CAT = 'geopolitics';
 const IMG_BASE = 'https://paranoidmodels.com/newswire/img/card/';
+const ALLOWED_CATEGORIES = new Set(['geopolitics','infoops','espionage','highpol','secrethist','elite']);
 
 function isLimp(text) {
   if (!text) return true;
@@ -15,14 +16,20 @@ function isLimp(text) {
 }
 
 function ensureImageBase(card) {
-  let img = card.image || '';
-  // If it ends with a file extension, replace with slug base
-  const hasExt = /\.(jpe?g|png|webp)$/i.test(img);
-  if (!img || hasExt) {
-    const slugSrc = (card.kicker || card.headline || 'card').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-    const slug = slugSrc.slice(0, 28) || 'card';
-    card.image = IMG_BASE + slug;
-  }
+  const current = card._meta?.image_base || card.image || '';
+  const endsWithSuffix = /(-\d+)?\.(jpe?g|png|webp)$/i.test(current);
+  const needsGen = !current || endsWithSuffix;
+  const slugSrc = (card.kicker || card.headline || 'card')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const slug = (slugSrc || 'card').slice(0, 28);
+  const base = needsGen ? (IMG_BASE + slug) : current.replace(/(-\d+)?\.(jpe?g|png|webp)$/i, '');
+
+  card._meta = card._meta || {};
+  card._meta.image_base = base;
+  // Keep legacy field for compatibility
+  card.image = base;
 }
 
 function okHersh(card) {
@@ -42,7 +49,18 @@ for (const f of FILES) {
   const out = [];
   for (const card of src) {
     card._meta = card._meta || {};
-    if (!card._meta.category) { card._meta.category = DEFAULT_CAT; changed++; }
+    // Ensure language per file
+    const lang = /\.fi\.json$/i.test(f) ? 'fi' : 'en';
+    if (card.lang !== lang) { card.lang = lang; changed++; }
+
+    // Category remediation with allowlist fallback
+    let cat = card._meta.category || card.category || DEFAULT_CAT;
+    if (!ALLOWED_CATEGORIES.has(String(cat))) {
+      cat = DEFAULT_CAT;
+      changed++;
+    }
+    card._meta.category = cat;
+
     ensureImageBase(card);
     const limp = isLimp(card.lede) || isLimp(card.why_it_matters);
     if (okHersh(card) && !limp) out.push(card);

@@ -15,12 +15,30 @@ const NewsCard: React.FC<NewsCardProps> = ({ item, isHero = false, testId, showL
   
   // Use lede_title if available, otherwise fall back to title
   const displayTitle = item.lede_title || item.title;
+  // Derive image srcset from image_base (no extension)
+  const imageBase = (item as any)?._meta?.image_base || (item as any)?.image || '';
+  const src480 = imageBase ? `${imageBase}-480.webp` : '';
+  const src768 = imageBase ? `${imageBase}-768.webp` : '';
+  const src1200 = imageBase ? `${imageBase}-1200.webp` : '';
   
   return (
     <article 
       className={cardClass}
       data-testid={testId || 'news-card'}
     >
+      {/* Image */}
+      {imageBase && (
+        <a href={item.cta.url} aria-label={displayTitle} className="block overflow-hidden rounded-2xl ring-1 ring-white/10">
+          <img
+            src={src768}
+            srcSet={`${src480} 480w, ${src768} 768w, ${src1200} 1200w`}
+            sizes={isHero ? '(min-width: 1024px) 1200px, (min-width: 640px) 768px, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'}
+            alt={displayTitle}
+            loading={priority ? 'eager' : 'lazy'}
+            decoding="async"
+          />
+        </a>
+      )}
       {/* Kicker */}
       <div className="kicker" data-testid="kicker">
         {item.kicker}
