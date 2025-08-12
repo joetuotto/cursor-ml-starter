@@ -18,88 +18,33 @@ jobs:
     env:
       GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
       PYTHONUNBUFFERED: "1"
-
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt || true
           pip install -r requirements-dev.txt || true
-
-      - id: auth
-        name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Build, Remediate, and Validate
+      - name: Build + validate
         run: |
           make style-check
           make feeds
           make remediate-feeds
           make validate-news
-
-      - name: Publish feeds to GCS
-        run: make publish-feeds
-
-name: Newswire – Hersh style + dark tolerance
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main, master ]
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "Makefile"
-      - "requirements*.txt"
-  schedule:
-    - cron: "5 6 * * *"  # daily pre-build (UTC)
-
-jobs:
-  build_and_publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      BUCKET: ${{ secrets.GCS_BUCKET }}
-      PYTHONUNBUFFERED: "1"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install deps
-        run: |
-          python -m pip install -U pip
-          pip install -r requirements.txt || true
-          pip install -r requirements-dev.txt || true
-      - name: Build + validate (Hersh style & dark-tolerance)
-        run: |
-          make style-check
-          make feeds
-          make remediate-feeds
-          make validate
-      # --- guarded publish: only if previous steps succeed ---
       - id: auth
-        name: Auth to GCP
+        name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Setup gcloud
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
