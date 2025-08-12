@@ -45,6 +45,8 @@ gcloud services enable iam.googleapis.com storage-component.googleapis.com --pro
 
 echo "[INFO] Creating GCS bucket..."
 gcloud storage buckets create "gs://${BUCKET}" --location="${REGION}" --project="${NEW_PROJECT_ID}" || true
+echo "[INFO] Making bucket contents public..."
+gsutil iam ch allUsers:objectViewer "gs://${BUCKET}"
 
 echo "[INFO] Creating Service Account..."
 gcloud iam service-accounts create "${SA_NAME}" --display-name="GitHub Actions Runner" --project="${NEW_PROJECT_ID}" || true
