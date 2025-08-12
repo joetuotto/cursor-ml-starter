@@ -33,25 +33,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt || true
           pip install -r requirements-dev.txt || true
+      - name: Assert at least one GCP key secret exists
+        if: ${{ !secrets.GCP_CREDENTIALS_JSON && !secrets.GCP_SA_KEY }}
+        run: |
+          echo "Missing secrets: set GCP_CREDENTIALS_JSON (preferred) or GCP_SA_KEY in repo Settings → Secrets and variables → Actions." >&2
+          exit 1
+      - id: auth_json
+        name: Authenticate to Google Cloud (GCP_CREDENTIALS_JSON)
+        if: ${{ secrets.GCP_CREDENTIALS_JSON }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
+      - id: auth_alt
+        name: Authenticate to Google Cloud (GCP_SA_KEY)
+        if: ${{ !secrets.GCP_CREDENTIALS_JSON && secrets.GCP_SA_KEY }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
       - name: Build + validate
         run: |
           make style-check
           make feeds
           make remediate-feeds
           make validate-news
-      - name: Assert required secrets are present
-        if: ${{ secrets.GCP_CREDENTIALS_JSON == '' }}
-        run: |
-          echo "Missing required secret GCP_CREDENTIALS_JSON. Go to Settings → Secrets and variables → Actions and add it." >&2
-          exit 1
-      - id: auth
-        name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GCP_CREDENTIALS_JSON }}'
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
       - name: Publish feeds to GCS
         run: make publish-feeds
