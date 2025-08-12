@@ -14,7 +14,6 @@ if [[ -z "$STATUS" || -z "$JOB" || -z "$ENV_NAME" || -z "$BRANCH" || -z "$SHA" |
   exit 1
 fi
 
-# Payload JSON
 TS="$(date -u +%FT%TZ)"
 PAYLOAD=$(jq -nc \
   --arg status "$STATUS" \
@@ -26,8 +25,7 @@ PAYLOAD=$(jq -nc \
   --arg ts "$TS" \
   '{status:$status,job:$job,env:$env,branch:$branch,sha:$sha,run_id:$run_id,ts:$ts}' 2>/dev/null || \
   printf '{"status":"%s","job":"%s","env":"%s","branch":"%s","sha":"%s","run_id":"%s","ts":"%s"}' \
-    "$STATUS" "$JOB" "$ENV_NAME" "$BRANCH" "$SHA" "$RUN_ID" "$TS"
-)
+    "$STATUS" "$JOB" "$ENV_NAME" "$BRANCH" "$SHA" "$RUN_ID" "$TS" )
 
 if [[ -z "$PROM_HEARTBEAT_URL" ]]; then
   echo "[heartbeat] PROM_HEARTBEAT_URL missing → skip"

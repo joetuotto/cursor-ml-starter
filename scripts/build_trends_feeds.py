@@ -1,4 +1,3 @@
-# scripts/build_trends_feeds.py
 import json
 from pathlib import Path
 
@@ -13,9 +12,7 @@ def main():
     items = json.loads(SRC.read_text())
     en, fi = [], []
     for it in items:
-        # oletus: enrich_with_hybrid asettaa lang=fi/en
         lang = (it.get("lang") or "").lower()
-        # Fallback: lisää "who benefits"/"kuka hyötyy" analyysi, jos puuttuu, jotta validate_card ei kaadu
         blob = " ".join(str(it.get(k, "")) for k in ("lede","analysis","risk_scenario","why_it_matters"))
         has_who_benefits = any(k in blob.lower() for k in [
             "who benefits","beneficiaries","kuka hyötyy","hyötyjät"
@@ -33,12 +30,10 @@ def main():
             )
             it["risk_scenario"] = (str(it.get("risk_scenario", "")).strip() + appendix).strip()
 
-        # Defensiiviset fallbackit validaattoria varten
         if not str(it.get("lede", "")).strip():
             base = (it.get("headline") or it.get("analysis") or "").strip()
             if not base:
                 base = "Lyhyt tiivistelmä puuttui; luotu automaattinen lede trendikortille." if lang == "fi" else "Summary was missing; generated an automatic lede for the trend card."
-            # varmista riittävä pituus
             if len(base) < 120:
                 pad = (it.get("why_it_matters") or it.get("risk_scenario") or it.get("analysis") or "").strip()
                 it["lede"] = (base + ". " + pad)[:280]
