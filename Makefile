@@ -145,6 +145,8 @@ paranoid-enrich:
 		--signal artifacts/signal.raw.json \
 		--schema artifacts/feed_item_schema.json \
 		--out artifacts/report.enriched.json
+	@echo "🧹 Normalizing enriched report for validation..."
+	python3 scripts/normalize_enriched.py || true
 
 paranoid-pipeline: paranoid-setup paranoid-train paranoid-gates paranoid-signal paranoid-enrich
 	@echo "✅ Full paranoid pipeline completed!"
