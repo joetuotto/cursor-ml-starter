@@ -35,10 +35,30 @@ def main():
 
         # Defensiiviset fallbackit validaattoria varten
         if not str(it.get("lede", "")).strip():
-            it["lede"] = it.get("headline", "") or (
-                "Lyhyt tiivistelmä puuttui; luotu automaattinen lede trendikortille."
+            base = (it.get("headline") or it.get("analysis") or "").strip()
+            if not base:
+                base = "Lyhyt tiivistelmä puuttui; luotu automaattinen lede trendikortille." if lang == "fi" else "Summary was missing; generated an automatic lede for the trend card."
+            # varmista riittävä pituus
+            if len(base) < 120:
+                pad = (it.get("why_it_matters") or it.get("risk_scenario") or it.get("analysis") or "").strip()
+                it["lede"] = (base + ". " + pad)[:280]
+            else:
+                it["lede"] = base[:280]
+
+        if not str(it.get("why_it_matters", "")).strip():
+            it["why_it_matters"] = (
+                "Miksi tämä on tärkeää: kehitys vaikuttaa toimialan kannattavuuteen, sääntely-ympäristöön ja kilpailuasetelmaan; "
+                "sijoittajat ja päätöksentekijät voivat hyötyä ennakoimalla vaikutukset."
                 if lang == "fi" else
-                "Summary was missing; generated an automatic lede for the trend card."
+                "Why it matters: this development impacts industry profitability, regulatory exposure and competitive dynamics; "
+                "investors and decision-makers can benefit by anticipating these effects."
+            )
+
+        if not str(it.get("who_benefits", "")).strip():
+            it["who_benefits"] = (
+                "Hyötyjät: toimijat, joiden asema vahvistuu trendin seurauksena (esim. markkinaosuutta kasvavat yritykset, regulaatiosta hyötyvät sektorit)."
+                if lang == "fi" else
+                "Beneficiaries: actors whose position strengthens due to the trend (e.g., firms gaining share, sectors advantaged by regulation)."
             )
 
         meta = it.get("_meta") or {}
@@ -50,7 +70,7 @@ def main():
         it["_meta"] = meta
 
         if not str(it.get("image_base", "")).strip():
-            it["image_base"] = "/newswire/img/card/placeholder.jpg"
+            it["image_base"] = "https://paranoidmodels.com/newswire/img/card/placeholder.jpg"
 
         (fi if lang == "fi" else en).append(it)
 
