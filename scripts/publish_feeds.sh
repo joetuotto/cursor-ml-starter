@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUCKET="${BUCKET:-paranoidmodels.com}"
+BUCKET="${BUCKET:-${GCS_BUCKET:-paranoidmodels.com}}"
 SRC_EN="${SRC_EN:-artifacts/feeds/trends.en.json}"
 SRC_FI="${SRC_FI:-artifacts/feeds/trends.fi.json}"
 DST_EN="gs://$BUCKET/newswire/trends.en.json"

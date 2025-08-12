@@ -725,7 +725,7 @@ fe-deploy: fe-build
 # ---------- Newswire: publish to GCS ----------
 .PHONY: publish-feeds
 publish-feeds:
-	@bash scripts/publish_feeds.sh
+	@BUCKET=$(GCS_BUCKET) bash scripts/publish_feeds.sh
 
 .PHONY: prod-news-cycle
 prod-news-cycle:
