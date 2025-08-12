@@ -62,7 +62,7 @@ gcloud run jobs deploy enrich-hybrid \
   --set-secrets "DEEPSEEK_API_KEY=deepseek-api-key:latest,CURSOR_API_KEY=cursor-gpt5-api-key:latest" \
   --set-env-vars "LLM_PROVIDER_MODE=hybrid" \
   --command bash \
-  --args -lc,"python3 scripts/test_hybrid_enrich.py && gsutil -m rsync -r artifacts gs://paranoidmodels.com"
+  --args -lc,"python3 scripts/test_hybrid_enrich.py && gsutil -m rsync -r artifacts gs://${BUCKET:-${GCS_BUCKET}}"
 EONXT
 echo "\nDone."
 

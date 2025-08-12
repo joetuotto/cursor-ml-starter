@@ -69,13 +69,13 @@
 +
 +.PHONY: images-publish
 +images-publish:
-+	@gsutil -m rsync -r artifacts/newswire/img/card gs://paranoidmodels.com/newswire/img/card
-+	@gsutil setmeta -h "Cache-Control:public, max-age=15552000, immutable" gs://paranoidmodels.com/newswire/img/card/**
++	@gsutil -m rsync -r artifacts/newswire/img/card gs:///newswire/img/card
++	@gsutil setmeta -h "Cache-Control:public, max-age=15552000, immutable" gs:///newswire/img/card/**
 +
 +.PHONY: publish-feeds
 +publish-feeds:
-+	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.en.json gs://paranoidmodels.com/feeds/trends.en.json
-+	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.fi.json gs://paranoidmodels.com/feeds/trends.fi.json
++	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.en.json gs:///feeds/trends.en.json
++	@gsutil -h "Content-Type: application/json" -h "Cache-Control:public,max-age=300" cp artifacts/feeds/trends.fi.json gs:///feeds/trends.fi.json
 +
 +.PHONY: news-with-images
 +news-with-images: style-check feeds images-duotone publish-feeds images-publish

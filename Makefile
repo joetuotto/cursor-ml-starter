@@ -720,7 +720,7 @@ fe-build: fe-symlink-feeds
 
 # 5) (valinnainen) Publikointi GCS:ään
 fe-deploy: fe-build
-	gsutil -m rsync -r web/dist gs://paranoidmodels.com
+	gsutil -m rsync -r web/dist gs://$(GCS_BUCKET)
 
 # ---------- Newswire: publish to GCS ----------
 .PHONY: publish-feeds
