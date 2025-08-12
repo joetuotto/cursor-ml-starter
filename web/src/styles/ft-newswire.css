@@ -7,6 +7,8 @@
   --salmon: #F2C6A0;
   --salmonD: #E1A574;
   --plum: #5A3D5C;
+  --fi-blue: #003F88;
+  --fi-light: #E8F4FD;
   --r: 16px;
   --font-serif: Georgia, serif;
   --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -367,5 +369,184 @@ h2 {
   a {
     color: inherit;
     text-decoration: underline;
+  }
+}
+
+/* Finnish-specific styles */
+.flag-emoji {
+  font-size: 0.9em;
+  margin-right: 8px;
+}
+
+.header-nav {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.nav-link {
+  color: var(--ink2);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.nav-link.active {
+  background: var(--fi-blue);
+  color: white;
+}
+
+.header-stats {
+  margin-top: 16px;
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+.stat strong {
+  color: var(--ink);
+}
+
+/* Finnish card wrapper */
+.news-card-wrapper {
+  position: relative;
+}
+
+.fi-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--fi-blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Finnish perspective section */
+.finnish-perspective {
+  margin: 16px 0;
+  background: var(--fi-light);
+  border-left: 4px solid var(--fi-blue);
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+}
+
+.fi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fi-label {
+  font-weight: 600;
+  color: var(--fi-blue);
+  font-size: 14px;
+}
+
+.fi-score {
+  font-size: 12px;
+  color: var(--ink2);
+  background: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.fi-content {
+  line-height: 1.5;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.fi-content p {
+  margin: 8px 0;
+}
+
+.fi-content p:first-child {
+  margin-top: 0;
+}
+
+.fi-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Loading and error states */
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink2);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top: 3px solid var(--fi-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.retry-button {
+  background: var(--fi-blue);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 16px;
+  transition: background 0.2s ease;
+}
+
+.retry-button:hover {
+  background: #002B61;
+}
+
+/* Mobile adjustments for Finnish UI */
+@media (max-width: 768px) {
+  .fi-badge {
+    top: -6px;
+    right: -6px;
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .finnish-perspective {
+    margin: 12px 0;
+    padding: 10px 12px;
+  }
+  
+  .fi-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .header-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .nav-link {
+    text-align: center;
   }
 }

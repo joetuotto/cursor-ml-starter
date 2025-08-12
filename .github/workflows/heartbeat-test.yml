@@ -1,0 +1,46 @@
+name: Heartbeat Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment label to include in heartbeat"
+        required: false
+        default: "test"
+      job:
+        description: "Job label to include in heartbeat"
+        required: false
+        default: "hb-test"
+
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Emit heartbeat (success)
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            success \
+            "${{ inputs.job }}" \
+            "${{ inputs.env }}" \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"
+
+      - name: Emit heartbeat (failure)
+        if: always()
+        env:
+          PROM_HEARTBEAT_URL: ${{ secrets.PROM_HEARTBEAT_URL }}
+        run: |
+          bash scripts/ops/emit_heartbeat.sh \
+            failure \
+            "${{ inputs.job }}" \
+            "${{ inputs.env }}" \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.run_id }}"
+

@@ -1,0 +1,14 @@
+name: paranoid-umap
+defaultService: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendServices/cr-backend
+hostRules:
+- hosts:
+  - paranoidmodels.com
+  pathMatcher: gcs-routes
+pathMatchers:
+- name: gcs-routes
+  defaultService: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendServices/cr-backend
+  pathRules:
+  - paths:
+    - /report
+    - /report.enriched.json
+    service: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendBuckets/gcs-backend

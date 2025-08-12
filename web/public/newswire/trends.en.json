@@ -1,0 +1,60 @@
+[
+  {
+    "kicker": "Market Update",
+    "headline": "ECB signals rate cuts",
+    "lede": "Analysis: ECB signals rate cuts",
+    "analysis": "Market dynamics suggest institutional involvement. Key beneficiaries include large institutional holders.",
+    "risk_scenario": "Market manipulation could accelerate if regulatory oversight remains limited.",
+    "why_it_matters": "This development affects market dynamics and institutional positioning.",
+    "sources": [
+      "https://reuters.com/business/ecb-rates",
+      "https://bloomberg.com/markets"
+    ],
+    "lang": "en",
+    "_meta": {
+      "validation": {
+        "errors": [
+          "missing_or_empty:cta",
+          "missing_or_empty:timestamp"
+        ],
+        "ok": false
+      },
+      "routing": {
+        "provider": "deepseek",
+        "reason": "daily_hard_cap_deepseek",
+        "risk_score": 0.3,
+        "complexity": 0.3
+      }
+    },
+    "id": "48b5b128a6d7"
+  },
+  {
+    "kicker": "Market Update",
+    "headline": "Tech startup raises series A",
+    "lede": "Analysis: Tech startup raises series A",
+    "analysis": "Market dynamics suggest institutional involvement. Key beneficiaries include large institutional holders.",
+    "risk_scenario": "Market manipulation could accelerate if regulatory oversight remains limited.",
+    "why_it_matters": "This development affects market dynamics and institutional positioning.",
+    "sources": [
+      "https://techcrunch.com/startup-funding",
+      "https://bloomberg.com/markets"
+    ],
+    "lang": "en",
+    "_meta": {
+      "validation": {
+        "errors": [
+          "missing_or_empty:cta",
+          "missing_or_empty:timestamp"
+        ],
+        "ok": false
+      },
+      "routing": {
+        "provider": "deepseek",
+        "reason": "daily_hard_cap_deepseek",
+        "risk_score": 0.3,
+        "complexity": 0.3
+      }
+    },
+    "id": "6d66b6c362fa"
+  }
+]

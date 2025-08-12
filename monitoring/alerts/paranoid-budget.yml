@@ -1,0 +1,73 @@
+groups:
+- name: paranoid-budget
+  interval: 30s
+  rules:
+  # --- Päiväkohtaiset rajat ---
+  - alert: ParanoidDailySoftCapHit
+    expr: paranoid_daily_soft_cap_hit{env=~".+"} == 1
+    for: 2m
+    labels: { severity: warning, team: ml-ops }
+    annotations:
+      summary: "Daily soft cap hit ({{ $labels.env }})"
+      description: "Soft-day limit reached. Throttling enabled. Investigate routing or pause experimentation."
+
+  - alert: ParanoidDailyHardCapHit
+    expr: paranoid_daily_hard_cap_hit{env=~".+"} == 1
+    for: 30s
+    labels: { severity: critical, team: ml-ops }
+    annotations:
+      summary: "Daily HARD cap hit ({{ $labels.env }})"
+      description: "Hard-day limit reached. LLM calls must be stopped. System should be in frozen mode."
+
+  # --- Kuukausikaton valvonta ---
+  - alert: ParanoidMonthlyCapNear
+    expr: paranoid_budget_spent_month_eur{env=~".+"} > (0.9 * on() group_left() paranoid_budget_month_cap_eur)
+    for: 5m
+    labels: { severity: warning, team: ml-ops }
+    annotations:
+      summary: "Monthly budget ≥90% ({{ $labels.env }})"
+      description: "Approaching monthly cap. Consider tightening routing or enabling budget throttle."
+
+  - alert: ParanoidMonthlyCapExceeded
+    expr: paranoid_budget_spent_month_eur{env=~".+"} > on() group_left() paranoid_budget_month_cap_eur
+    for: 1m
+    labels: { severity: critical, team: ml-ops }
+    annotations:
+      summary: "Monthly budget EXCEEDED ({{ $labels.env }})"
+      description: "Monthly cap breached. Freeze premium provider and enable emergency mode."
+
+  # --- Laatu / Drift / Health ---
+  - alert: ParanoidQualityGatesFailed
+    expr: paranoid_quality_gates_passed{env=~".+"} == 0
+    for: 2m
+    labels: { severity: critical, team: ml-ops }
+    annotations:
+      summary: "Quality gates failed ({{ $labels.env }})"
+      description: "Quality gates not passing. Rollback or switch to safe templates."
+
+  - alert: ParanoidConceptDriftCritical
+    expr: paranoid_drift_alerts_critical{env=~".+"} > 0
+    for: 2m
+    labels: { severity: critical, team: ml-ops }
+    annotations:
+      summary: "Concept drift detected ({{ $labels.env }})"
+      description: "Critical drift alerts > 0. Trigger retraining or tighten router."
+
+  # --- Heartbeat / Sanity ---
+  - alert: ParanoidBudgetHeartbeatMissing
+    expr: absent(paranoid_budget_spent_today_eur{env=~".+"})
+    for: 15m
+    labels: { severity: warning, team: ml-ops }
+    annotations:
+      summary: "Daily budget heartbeat missing ({{ $labels.env }})"
+      description: "No daily budget metric seen. Verify cron/Pushgateway and pipeline."
+
+  - alert: ParanoidPostDeploySanityFailed
+    expr: paranoid_post_deploy_sanity_ok{env=~".+"} == 0
+    for: 2m
+    labels: { severity: critical, team: ops }
+    annotations:
+      summary: "Post-deploy sanity failed ({{ $labels.env }})"
+      description: "Root/health/schema checks failing after deploy. Rollback recommended."
+
+

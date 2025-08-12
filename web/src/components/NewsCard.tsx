@@ -5,9 +5,11 @@ interface NewsCardProps {
   item: EnrichedItem;
   isHero?: boolean;
   testId?: string;
+  showLocalFi?: boolean;
+  priority?: boolean;
 }
 
-const NewsCard: React.FC<NewsCardProps> = ({ item, isHero = false, testId }) => {
+const NewsCard: React.FC<NewsCardProps> = ({ item, isHero = false, testId, showLocalFi = false, priority = false }) => {
   const cardClass = isHero ? 'card card-hero' : 'card';
   const ledeMaxLength = isHero ? 300 : 240;
   
@@ -37,8 +39,30 @@ const NewsCard: React.FC<NewsCardProps> = ({ item, isHero = false, testId }) => 
       
       {/* Lede */}
       <p className="lede" data-testid="lede">
-        {clipText(item.lede, ledeMaxLength)}
+        {showLocalFi && item.local_fi ? 
+          clipText(item.local_fi.split('.')[0] + '.', ledeMaxLength) : 
+          clipText(item.lede, ledeMaxLength)
+        }
       </p>
+      
+      {/* Finnish perspective section */}
+      {showLocalFi && item.local_fi && (
+        <div className="finnish-perspective">
+          <div className="fi-header">
+            <span className="fi-label">🇫🇮 Suomen näkökulma</span>
+            {item.local_fi_score && (
+              <span className="fi-score">
+                {Math.round(item.local_fi_score * 100)}% relevanssi
+              </span>
+            )}
+          </div>
+          <div className="fi-content">
+            {item.local_fi.split('\n').map((paragraph, i) => (
+              paragraph.trim() && <p key={i}>{paragraph.trim()}</p>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Why it matters (conditional) */}
       {item.why_it_matters && (

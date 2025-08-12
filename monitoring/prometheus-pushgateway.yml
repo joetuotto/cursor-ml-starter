@@ -1,0 +1,13 @@
+# Sample Prometheus scrape config for Pushgateway
+# Merge this block into your main prometheus.yml under `scrape_configs:`
+
+scrape_configs:
+  - job_name: 'pushgateway'
+    honor_labels: true
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['pushgateway:9091']  # change to your Pushgateway host:port
+    metrics_path: /metrics
+    scheme: http
+
+

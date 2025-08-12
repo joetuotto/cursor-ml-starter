@@ -1,0 +1,135 @@
+diff --git a/Dockerfile b/Dockerfile
+index 1234567..89abcde 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -11,6 +11,8 @@ COPY . /app
+ ENV PYTHONUNBUFFERED=1 \
+     PORT=8080
+ 
++# Cloud Run uses dynamic $PORT
+ EXPOSE 8080
+-CMD ["bash", "-lc", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
++
++# Use the main app with dynamic port from environment
++CMD ["bash", "-lc", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+diff --git a/app/main.py b/app/main.py
+index 7654321..fedcba9 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,6 +1,19 @@
+ from fastapi import FastAPI, Request, Response
+ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+ from fastapi.staticfiles import StaticFiles
++from starlette.middleware.cors import CORSMiddleware
++import os
++
++# Paths for static assets
++ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
++INDEX_PATH = os.path.join(ASSETS_DIR, "index.html")
++
++app = FastAPI(title="PARANOID Models API")
++
++# CORS middleware
++app.add_middleware(
++    CORSMiddleware,
++    allow_origins=["https://paranoidmodels.com", "https://www.paranoidmodels.com", "*"],
++    allow_credentials=True,
++    allow_methods=["*"],
++    allow_headers=["*"],
++)
++
++# Mount static assets
++if os.path.exists(os.path.join(ASSETS_DIR, "assets")):
++    app.mount("/assets", StaticFiles(directory=os.path.join(ASSETS_DIR, "assets"), html=False), name="assets")
+ from pydantic import BaseModel
+ import os, os.path, time
+ 
+-app = FastAPI(title="PARANOID Models API")
+-
+-# CORS middleware
+-app.add_middleware(
+-    CORSMiddleware,
+-    allow_origins=["https://paranoidmodels.com", "https://www.paranoidmodels.com", "*"],
+-    allow_credentials=True,
+-    allow_methods=["*"],
+-    allow_headers=["*"],
+-)
+-
+ BOOT = time.time()
+ SCHEMA_PATH = os.getenv("SCHEMA_PATH", "/app/artifacts/feed_item_schema.json")
+ MODEL_VERSION = os.getenv("MODEL_VERSION", "gb-1.0.0")
+ 
+-# Paths for static assets
+-ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
+-INDEX_PATH = os.path.join(ASSETS_DIR, "index.html")
+-
+-# Mount static assets
+-if os.path.exists(os.path.join(ASSETS_DIR, "assets")):
+-    app.mount("/assets", StaticFiles(directory=os.path.join(ASSETS_DIR, "assets"), html=False), name="assets")
+-
+ class PredictIn(BaseModel):
+     emf: float
+     income: float
+@@ -46,6 +47,10 @@ def health():
+ @app.head("/health")
+ def health_head():
+     return Response(status_code=200)
++
++# Health (GET + HEAD)
++@app.get("/health")
++def health():
++    return {"status": "ok"}
+ 
+ @app.get("/schemas/feed_item.json")
+ def schema():
+@@ -78,20 +83,25 @@ def predict(x: PredictIn):
+     return {"fertility_rate": fertility, "model_version": MODEL_VERSION}
+ 
+ # Root page (GET/HEAD) - serve index.html
++# Juurisivu (GET + HEAD)
+ @app.get("/")
+ def root():
+     if os.path.exists(INDEX_PATH):
+         return FileResponse(INDEX_PATH, media_type="text/html")
+     return JSONResponse({"error": "UI not available"}, status_code=404)
+ 
+ @app.head("/")
+ def root_head():
+     return Response(status_code=200)
+ 
+-# SPA fallback - any unknown path returns index.html
++# SPA-fallback: muut GET-reitit palauttavat index.html,
++# ellei kyseessä ole olemassa oleva tiedosto web/dist -puussa.
+ @app.get("/{full_path:path}")
+ def spa_fallback(full_path: str, request: Request):
+-    # Return assets directly if they exist
++    # Return assets directly if they exist  
+     candidate = os.path.join(ASSETS_DIR, full_path)
+     if os.path.isfile(candidate):
+         return FileResponse(candidate)
+-
+-    # Otherwise SPA fallback to index.html
++    
++    # Otherwise SPA fallback
+     if os.path.exists(INDEX_PATH):
+         return FileResponse(INDEX_PATH, media_type="text/html")
+     return JSONResponse({"error": "UI not available"}, status_code=404)
+diff --git a/Makefile b/Makefile
+index a1b2c3d..d4e5f6a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -218,9 +218,15 @@ paranoid-prod-check:
+ 	curl -fsS $$URL/health && echo " ✅ OK" || (echo " ❌ FAIL"; exit 1)
+ 
+ deploy-paranoid:
+-	@echo "🚀 Starting self-healing PARANOID V5 deployment pipeline..."
++	@echo "🚀 Starting self-healing PARANOID V5 deployment..."
+ 	bash scripts/deploy_paranoid_full.sh
+ 
++deploy-paranoid-with-image:
++	@echo "🚀 Deploying PARANOID V5 with new container image..."
++	IMAGE=$(IMAGE) bash scripts/deploy_paranoid_full.sh
++
++rollback-paranoid:
++	@echo "🔄 Executing manual rollback..."
++	bash scripts/rollback_paranoid.sh

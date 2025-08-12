@@ -1,0 +1,21 @@
+creationTimestamp: '2025-08-11T05:43:05.735-07:00'
+defaultService: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendServices/cr-backend
+fingerprint: fVTPJ9f6SVo=
+hostRules:
+- hosts:
+  - paranoidmodels.com
+  pathMatcher: gcs-routes
+id: 7163399402834647990
+kind: compute#urlMap
+name: paranoid-umap
+pathMatchers:
+- defaultService: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendServices/cr-backend
+  name: gcs-routes
+  pathRules:
+  - paths:
+    - /report
+    - /report.enriched.json
+    - /feeds/*
+    - /newswire/img/*
+    service: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/backendBuckets/gcs-backend
+selfLink: https://www.googleapis.com/compute/v1/projects/braided-topic-452112-v3/global/urlMaps/paranoid-umap

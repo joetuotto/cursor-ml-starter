@@ -1,0 +1,17 @@
+{
+  "kicker": "Paranoid Analysis",
+  "headline": "ECB signals rate pause",
+  "lede": "[GPT5] ECB signals rate pause",
+  "why_it_matters": "Why it matters: tarkka vaikutus lukijalle.",
+  "cta": {
+    "href": "#",
+    "label": "Lähde"
+  },
+  "timestamp": null,
+  "category": "premium",
+  "model": "gpt5",
+  "sources": [],
+  "confidence": 0.86,
+  "lang": "en",
+  "country": "EU"
+}

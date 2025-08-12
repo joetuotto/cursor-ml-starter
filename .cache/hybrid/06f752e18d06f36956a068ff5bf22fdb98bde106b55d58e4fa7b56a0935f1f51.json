@@ -1,0 +1,17 @@
+{
+  "kicker": "Paranoid Analysis",
+  "headline": "Tech startup raises seed funding",
+  "lede": "[GPT5] Tech startup raises seed funding",
+  "why_it_matters": "Why it matters: tarkka vaikutus lukijalle.",
+  "cta": {
+    "href": "#",
+    "label": "Lähde"
+  },
+  "timestamp": null,
+  "category": "premium",
+  "model": "gpt5",
+  "sources": [],
+  "confidence": 0.86,
+  "lang": "en",
+  "country": "US"
+}

@@ -95,6 +95,20 @@ make paranoid-full-mock
 }
 ```
 
+## ☁️ Cloud Run Deployment
+
+```bash
+export PROJECT_ID="braided-topic-452112-v3"
+export REGION="europe-north1"
+export SERVICE_NAME="paranoid-api"
+export CURSOR_API_KEY="sk-..."
+make paranoid-cloud-run
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format="value(status.url)")
+curl -sSf "$SERVICE_URL/health"
+```
+
+**Production monitoring:** Prometheus + Grafana (see `monitoring/`), PagerDuty + Slack (alert templates ready).
+
 ## ⚙️ INDIVIDUAL COMMANDS
 
 ```bash
@@ -206,3 +220,55 @@ make paranoid-full       # Full pipeline with real data
 The complete pipeline transforms raw governance and event data into publication-ready paranoid intelligence with full quality validation and automated enrichment.
 
 **Ready to detect the undetectable. 🚨**
+
+## 🚀 Self-Healing Cloud Deployment
+
+**One-command deployment with automatic rollback:**
+
+```bash
+# Standard self-healing deployment
+make deploy-paranoid
+
+# Deploy with new container image
+IMAGE="gcr.io/project/paranoid-api:v1.2.3" make deploy-paranoid-with-image
+
+# Manual rollback (if needed)
+REVISION="paranoid-api-00042-abc" make rollback-paranoid
+
+# Rollback to different service
+SERVICE_PREV="fertility-api" make rollback-paranoid
+```
+
+**Features:**
+- ✅ **Automatic rollback** on health check failures
+- ✅ **State snapshot** before deployment
+- ✅ **Comprehensive health checks** (site + API)
+- ✅ **Cloud Storage backup** for static assets
+- ✅ **Prometheus metrics** (optional)
+- ✅ **Slack notifications** (optional)
+
+**Environment variables:**
+```bash
+export PROJECT_ID="braided-topic-452112-v3"
+export REGION="europe-north1"
+export PROMETHEUS_PUSHGATEWAY_URL="http://prometheus:9091"
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+```
+
+## 🚀 Quick Cloud Go-Live Sequence
+
+Copy-paste for instant cloud deployment:
+
+```bash
+# One command - self-healing deployment
+make deploy-paranoid
+```
+
+## 📱 Live Production Endpoints
+
+**✅ PARANOID V5 is now LIVE:**
+- **Health:** https://paranoid-api-2q3ac3ofma-lz.a.run.app/health  
+- **Predict:** https://paranoid-api-2q3ac3ofma-lz.a.run.app/predict
+- **Newswire:** https://paranoid-api-2q3ac3ofma-lz.a.run.app/newswire
+
+**Ready to detect the undetectable at global enterprise scale. 🌍🏢🚨🎯**

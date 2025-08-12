@@ -1,15 +1,26 @@
 // Data fetching for enriched content with fallback
 export interface EnrichedItem {
+  id?: string;
   kicker: string;
   title: string;
   lede_title?: string;
   lede: string;
   why_it_matters?: string;
+  analysis?: string;
   cta: {
     label: string;
     url: string;
   };
   published_at: string;
+  source_name?: string;
+  source_url?: string;
+  origin_country?: string;
+  category_guess?: string;
+  tags?: string[];
+  local_fi?: string;
+  local_fi_score?: number;
+  enriched_at?: string;
+  model_version?: string;
 }
 
 export interface EnrichedData {
