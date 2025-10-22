@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import datetime
 from typing import Optional
 
 import joblib
@@ -74,11 +75,30 @@ def main(argv: Optional[list[str]] = None) -> None:
         X = df[["EMF", "Income", "Urbanization"]]
         preds = model.predict(X)
         out_json = {"predictions": list(map(float, preds))}
-        print(json.dumps(out_json, indent=2))
 
+        # Generate default output path if not specified
         if args.out:
-            os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-            pd.DataFrame({"prediction": preds}).to_csv(args.out, index=False)
+            out_csv_path = args.out
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_csv_path = f"./artifacts/predictions_{timestamp}.csv"
+
+        # Always save predictions to CSV
+        os.makedirs(os.path.dirname(out_csv_path) or ".", exist_ok=True)
+        pd.DataFrame({"prediction": preds}).to_csv(out_csv_path, index=False)
+
+        # Also save as JSON
+        out_json_path = out_csv_path.replace(".csv", ".json")
+        with open(out_json_path, "w", encoding="utf-8") as f:
+            json.dump(out_json, f, indent=2)
+
+        # Print results with file paths
+        result_output = {
+            "predictions": list(map(float, preds)),
+            "saved_csv": out_csv_path,
+            "saved_json": out_json_path
+        }
+        print(json.dumps(result_output, indent=2))
 
     elif args.command == "enrich":
         with open(args.signal, "r", encoding="utf-8") as f:

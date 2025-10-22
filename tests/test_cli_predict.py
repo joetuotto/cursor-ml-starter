@@ -57,3 +57,11 @@ def test_cli_train_and_predict(tmp_path: Path) -> None:
     assert proc_pred.returncode == 0, proc_pred.stderr
     out = json.loads(proc_pred.stdout)
     assert "predictions" in out and len(out["predictions"]) == 8
+
+    # Verify files were saved automatically
+    assert "saved_csv" in out, "CSV path should be in output"
+    assert "saved_json" in out, "JSON path should be in output"
+    saved_csv = Path(out["saved_csv"])
+    saved_json = Path(out["saved_json"])
+    assert saved_csv.exists(), f"Predictions CSV should be saved: {saved_csv}"
+    assert saved_json.exists(), f"Predictions JSON should be saved: {saved_json}"
